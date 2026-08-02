@@ -1,111 +1,302 @@
+/* ============================================
+   DevForge AI — Global Styles & Design System
+   Tailwind CSS v4 + Custom Design Tokens
+   ============================================ */
+
+@import "tailwindcss";
+
+/* ============================================
+   Design System Tokens (CSS Custom Properties)
+   ============================================ */
+
+@theme {
+  /* Brand colors */
+  --color-brand-50: oklch(0.97 0.01 285);
+  --color-brand-100: oklch(0.93 0.03 285);
+  --color-brand-200: oklch(0.87 0.06 285);
+  --color-brand-300: oklch(0.78 0.10 285);
+  --color-brand-400: oklch(0.68 0.16 285);
+  --color-brand-500: oklch(0.58 0.22 285);
+  --color-brand-600: oklch(0.50 0.22 285);
+  --color-brand-700: oklch(0.43 0.20 285);
+  --color-brand-800: oklch(0.36 0.16 285);
+  --color-brand-900: oklch(0.30 0.12 285);
+  --color-brand-950: oklch(0.22 0.09 285);
+}
+
+/* ============================================
+   Light Mode (Default)
+   ============================================ */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+  --primary: 262 83% 58%;
+  --primary-foreground: 0 0% 98%;
+
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 262 83% 58%;
+
+  --radius: 0.75rem;
+
+  --chart-1: 262 83% 58%;
+  --chart-2: 188 94% 43%;
+  --chart-3: 142 71% 45%;
+  --chart-4: 38 92% 50%;
+  --chart-5: 346 77% 50%;
+}
+
+/* ============================================
+   Dark Mode
+   ============================================ */
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+
+  --card: 240 10% 5.5%;
+  --card-foreground: 0 0% 98%;
+
+  --popover: 240 10% 5.5%;
+  --popover-foreground: 0 0% 98%;
+
+  --primary: 262 83% 58%;
+  --primary-foreground: 0 0% 98%;
+
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 262 83% 58%;
+
+  --chart-1: 262 83% 58%;
+  --chart-2: 188 94% 43%;
+  --chart-3: 142 71% 45%;
+  --chart-4: 38 92% 50%;
+  --chart-5: 346 77% 50%;
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+/* ============================================
+   Utility Classes
+   ============================================ */
+@utility bg-background {
+  background-color: hsl(var(--background));
+}
+
+@utility text-foreground {
+  color: hsl(var(--foreground));
+}
+
+@utility bg-card {
+  background-color: hsl(var(--card));
+}
+
+@utility text-card-foreground {
+  color: hsl(var(--card-foreground));
+}
+
+@utility bg-primary {
+  background-color: hsl(var(--primary));
+}
+
+@utility text-primary {
+  color: hsl(var(--primary));
+}
+
+@utility bg-primary-foreground {
+  background-color: hsl(var(--primary-foreground));
+}
+
+@utility text-primary-foreground {
+  color: hsl(var(--primary-foreground));
+}
+
+@utility bg-secondary {
+  background-color: hsl(var(--secondary));
+}
+
+@utility text-secondary-foreground {
+  color: hsl(var(--secondary-foreground));
+}
+
+@utility bg-muted {
+  background-color: hsl(var(--muted));
+}
+
+@utility text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+}
+
+@utility bg-accent {
+  background-color: hsl(var(--accent));
+}
+
+@utility text-accent-foreground {
+  color: hsl(var(--accent-foreground));
+}
+
+@utility bg-destructive {
+  background-color: hsl(var(--destructive));
+}
+
+@utility text-destructive {
+  color: hsl(var(--destructive));
+}
+
+@utility text-destructive-foreground {
+  color: hsl(var(--destructive-foreground));
+}
+
+@utility border-border {
+  border-color: hsl(var(--border));
+}
+
+@utility border-input {
+  border-color: hsl(var(--input));
+}
+
+@utility ring-ring {
+  --tw-ring-color: hsl(var(--ring));
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+@layer base {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
   }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+/* ============================================
+   Custom Animations
+   ============================================ */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
   }
 }
-p {
-  margin: 0;
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.6);
+  }
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+@utility animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+@utility animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+@utility animate-shimmer {
+  animation: shimmer 2s infinite linear;
+  background-size: 200% 100%;
+}
+
+@utility animate-glow-pulse {
+  animation: glow-pulse 2s infinite ease-in-out;
+}
+
+/* ============================================
+   Glassmorphism Utilities
+   ============================================ */
+@utility glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@utility glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 1rem;
 }
