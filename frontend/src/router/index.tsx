@@ -11,6 +11,7 @@ const Landing = lazy(() => import('@/pages/Landing'));
 const Login = lazy(() => import('@/pages/auth/Login'));
 const Register = lazy(() => import('@/pages/auth/Register'));
 const ForgotPassword = lazy(() => import('@/pages/auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/pages/auth/ResetPassword'));
 const VerifyEmail = lazy(() => import('@/pages/auth/VerifyEmail'));
 const Dashboard = lazy(() => import('@/pages/dashboard/Dashboard'));
 const Projects = lazy(() => import('@/pages/dashboard/Projects'));
@@ -112,6 +113,14 @@ export const router = createBrowserRouter([
             element: (
               <SuspenseWrapper>
                 <ForgotPassword />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: '/reset-password',
+            element: (
+              <SuspenseWrapper>
+                <ResetPassword />
               </SuspenseWrapper>
             ),
           },

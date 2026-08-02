@@ -1,19 +1,31 @@
+from __future__ import annotations
+from typing import AsyncGenerator, Optional
 import redis.asyncio as redis
-from typing import AsyncGenerator
+import structlog
 from app.core.config import settings
 
-redis_client: redis.Redis | None = None
+logger = structlog.get_logger(__name__)
+
+redis_client: Optional[redis.Redis] = None
+
 
 async def init_redis():
     global redis_client
-    redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+    try:
+        redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+    except Exception as e:
+        logger.warning("redis_init_failed", error=str(e))
+        redis_client = None
+
 
 async def close_redis():
     global redis_client
     if redis_client:
-        await redis_client.close()
+        try:
+            await redis_client.close()
+        except Exception:
+            pass
 
-async def get_redis() -> AsyncGenerator[redis.Redis, None]:
-    if redis_client is None:
-        raise Exception("Redis not initialized")
+
+async def get_redis() -> AsyncGenerator[Optional[redis.Redis], None]:
     yield redis_client

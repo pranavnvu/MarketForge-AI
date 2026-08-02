@@ -1,3 +1,4 @@
+from __future__ import annotations
 import contextlib
 from typing import AsyncIterator, Any
 from sqlalchemy.ext.asyncio import (

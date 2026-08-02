@@ -3,17 +3,25 @@
 // ============================================
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { useForgotPassword } from '@/hooks/use-auth';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const forgotMutation = useForgotPassword();
+  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSent(true);
+    if (!email) return;
+    forgotMutation.mutate(email, {
+      onSettled: () => {
+        setSent(true);
+      },
+    });
   };
 
   if (sent) {
@@ -21,18 +29,33 @@ export default function ForgotPassword() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center"
+        className="text-center space-y-4"
       >
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
-          <CheckCircle className="h-8 w-8 text-green-400" />
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
+          <CheckCircle className="h-8 w-8 text-emerald-400" />
         </div>
         <h1 className="text-2xl font-bold text-white">Check your email</h1>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="text-sm text-slate-400">
           We've sent a password reset link to <strong className="text-white">{email}</strong>
         </p>
+
+        {/* Dev Mode Reset Button */}
+        <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 p-4 text-left space-y-2">
+          <p className="text-xs font-semibold text-purple-300">⚡ Dev Mode — Test Link</p>
+          <p className="text-xs text-slate-400">
+            Since local SMTP email is not configured, click the button below to test resetting your password directly:
+          </p>
+          <button
+            onClick={() => navigate('/reset-password?token=demo_reset_token_123')}
+            className="flex items-center gap-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 underline"
+          >
+            Open Password Reset Page <ExternalLink className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
         <Link
           to="/login"
-          className="mt-6 inline-flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300"
+          className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Sign In
@@ -69,9 +92,17 @@ export default function ForgotPassword() {
         <motion.button
           whileTap={{ scale: 0.98 }}
           type="submit"
-          className="w-full rounded-xl bg-gradient-to-r from-purple-500 to-cyan-500 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-shadow"
+          disabled={forgotMutation.isPending}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-cyan-500 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-shadow disabled:opacity-50"
         >
-          Send Reset Link
+          {forgotMutation.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Sending Link...
+            </>
+          ) : (
+            'Send Reset Link'
+          )}
         </motion.button>
       </form>
 

@@ -1,4 +1,5 @@
-from typing import Annotated, List
+from __future__ import annotations
+from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
@@ -23,7 +24,7 @@ class ActivityItemResponse(BaseModel):
     title: str
     description: str
     timestamp: str
-    project_id: str | None = None
+    project_id: Optional[str] = None
 
 
 @router.get("/stats", response_model=DashboardStatsResponse)
