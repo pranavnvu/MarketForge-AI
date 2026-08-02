@@ -85,6 +85,16 @@ export default function Dashboard() {
   const { data: dbProjects = [] } = useProjects();
   const navigate = useNavigate();
 
+  // Read deleted project IDs from localStorage to stay synced with Projects page
+  const deletedIds = (() => {
+    try {
+      const saved = localStorage.getItem('devforge_deleted_project_ids');
+      return saved ? (JSON.parse(saved) as string[]) : [];
+    } catch {
+      return [];
+    }
+  })();
+
   const demoProjects = [
     {
       id: 'demo-1',
@@ -106,8 +116,11 @@ export default function Dashboard() {
     },
   ];
 
-  const displayProjects = dbProjects.length > 0 ? dbProjects : demoProjects;
-  const activeCount = dbProjects.length > 0 ? dbProjects.length : 3;
+  const allProjects = [...dbProjects, ...demoProjects].filter(
+    (p) => !deletedIds.includes(p.id)
+  );
+
+  const activeCount = allProjects.length;
 
   return (
     <div className="space-y-6">
@@ -134,12 +147,12 @@ export default function Dashboard() {
           label="Active Projects"
           value={activeCount}
           icon={FolderKanban}
-          trend="+2 this week"
+          trend={activeCount > 0 ? "+2 this week" : undefined}
           color="#8B5CF6"
         />
         <StatCard
           label="Running Agents"
-          value={7}
+          value={activeCount > 0 ? 7 : 0}
           icon={Bot}
           color="#06B6D4"
         />
@@ -175,48 +188,63 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-3">
-            {displayProjects.slice(0, 5).map((project) => {
-              const statusKey = (project.status || 'planning') as keyof typeof PROJECT_STATUS_CONFIG;
-              const statusConfig = PROJECT_STATUS_CONFIG[statusKey] || PROJECT_STATUS_CONFIG.planning;
-
-              return (
-                <div
-                  key={project.id}
-                  onClick={() => navigate(`/dashboard/projects/${project.id}/workspace`)}
-                  className="flex items-center gap-4 rounded-xl border border-border/30 p-4 hover:bg-accent/30 transition-colors cursor-pointer"
+            {allProjects.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <FolderKanban className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                <p className="text-sm font-medium">No active projects</p>
+                <p className="text-xs text-muted-foreground mt-1 mb-4">Create your first AI multi-agent project to get started.</p>
+                <Link
+                  to={ROUTES.NEW_PROJECT}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium">{project.name}</p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <span
-                        className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
-                        style={{
-                          color: statusConfig.color,
-                          backgroundColor: `${statusConfig.color}15`,
-                        }}
-                      >
-                        {statusConfig.label}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        10 agents active
-                      </span>
+                  <Plus className="h-3.5 w-3.5" />
+                  Create Project
+                </Link>
+              </div>
+            ) : (
+              allProjects.slice(0, 5).map((project) => {
+                const statusKey = (project.status || 'planning') as keyof typeof PROJECT_STATUS_CONFIG;
+                const statusConfig = PROJECT_STATUS_CONFIG[statusKey] || PROJECT_STATUS_CONFIG.planning;
+
+                return (
+                  <div
+                    key={project.id}
+                    onClick={() => navigate(`/dashboard/projects/${project.id}/workspace`)}
+                    className="flex items-center gap-4 rounded-xl border border-border/30 p-4 hover:bg-accent/30 transition-colors cursor-pointer"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">{project.name}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span
+                          className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
+                          style={{
+                            color: statusConfig.color,
+                            backgroundColor: `${statusConfig.color}15`,
+                          }}
+                        >
+                          {statusConfig.label}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          10 agents active
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-24">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className="font-medium">{project.progress ?? 10}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-accent">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 transition-all"
+                          style={{ width: `${project.progress ?? 10}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="w-24">
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{project.progress ?? 10}%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-accent">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 transition-all"
-                        style={{ width: `${project.progress ?? 10}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
