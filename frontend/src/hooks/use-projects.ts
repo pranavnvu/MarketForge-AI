@@ -65,3 +65,17 @@ export function useCreateProject() {
     },
   });
 }
+
+export function useDeleteProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiClient.delete(`/projects/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+    },
+  });
+}

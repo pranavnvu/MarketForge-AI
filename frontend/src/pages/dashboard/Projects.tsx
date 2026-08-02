@@ -5,9 +5,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Search, MoreVertical, Loader2 } from 'lucide-react';
+import { Plus, Search, Trash2, Loader2 } from 'lucide-react';
 import { ROUTES, PROJECT_STATUS_CONFIG } from '@/lib/constants';
-import { useProjects } from '@/hooks/use-projects';
+import { useProjects, useDeleteProject } from '@/hooks/use-projects';
 import type { ProjectStatus } from '@/types';
 
 const defaultDemoProjects = [
@@ -17,7 +17,6 @@ const defaultDemoProjects = [
     description: 'A full-stack expense tracking application with budget management and analytics.',
     status: 'in_progress' as ProjectStatus,
     progress: 65,
-    agents: 4,
     createdAt: '2026-08-01T12:00:00Z',
   },
   {
@@ -26,7 +25,6 @@ const defaultDemoProjects = [
     description: 'Modern e-commerce platform with payment processing and inventory management.',
     status: 'planning' as ProjectStatus,
     progress: 25,
-    agents: 2,
     createdAt: '2026-08-01T10:00:00Z',
   },
   {
@@ -35,17 +33,29 @@ const defaultDemoProjects = [
     description: 'Collaborative task management with Kanban boards and team features.',
     status: 'completed' as ProjectStatus,
     progress: 100,
-    agents: 10,
     createdAt: '2026-07-28T09:00:00Z',
   },
 ];
 
 export default function Projects() {
   const { data: dbProjects = [], isLoading } = useProjects();
+  const deleteMutation = useDeleteProject();
   const [search, setSearch] = useState('');
+  const [demoProjectsList, setDemoProjectsList] = useState(defaultDemoProjects);
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (id.startsWith('demo-')) {
+      setDemoProjectsList((prev) => prev.filter((p) => p.id !== id));
+    } else {
+      deleteMutation.mutate(id);
+    }
+  };
 
   // Combine real database projects with initial default projects
-  const allProjects = [...dbProjects, ...defaultDemoProjects].filter((p) =>
+  const allProjects = [...dbProjects, ...demoProjectsList].filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
   );
@@ -101,12 +111,13 @@ export default function Projects() {
               key={project.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               transition={{ delay: index * 0.05 }}
               whileHover={{ y: -4 }}
             >
               <Link
                 to={`/dashboard/projects/${project.id}/workspace`}
-                className="block rounded-2xl border border-border/50 bg-card/50 p-5 backdrop-blur-sm transition-shadow hover:shadow-lg group"
+                className="block rounded-2xl border border-border/50 bg-card/50 p-5 backdrop-blur-sm transition-shadow hover:shadow-lg group relative"
               >
                 <div className="flex items-start justify-between">
                   <span
@@ -118,8 +129,13 @@ export default function Projects() {
                   >
                     {statusConfig.label}
                   </span>
-                  <button className="rounded-lg p-1 opacity-0 group-hover:opacity-100 hover:bg-accent transition-all">
-                    <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                  
+                  <button
+                    onClick={(e) => handleDelete(e, project.id)}
+                    title="Delete Project"
+                    className="rounded-lg p-1.5 opacity-80 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-400 text-slate-400 transition-all"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
 
