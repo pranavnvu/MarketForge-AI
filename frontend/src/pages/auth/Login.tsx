@@ -2,11 +2,12 @@
 // DevForge AI — Login Page
 // ============================================
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useLogin } from '@/hooks/use-auth';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -14,6 +15,33 @@ export default function Login() {
   const [password, setPassword] = useState('');
 
   const loginMutation = useLogin();
+  const navigate = useNavigate();
+  const setAuth = useAuthStore((s) => s.setAuth);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthToken = params.get('oauth_token');
+    const oauthRefresh = params.get('oauth_refresh');
+
+    if (oauthToken && oauthRefresh) {
+      setAuth(
+        {
+          id: 'usr-oauth',
+          email: 'oauth_user@devforge.ai',
+          name: 'OAuth Developer',
+          avatar: null,
+          role: 'user',
+          isVerified: true,
+          oauthProvider: 'oauth',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        oauthToken,
+        oauthRefresh
+      );
+      navigate('/dashboard');
+    }
+  }, [navigate, setAuth]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

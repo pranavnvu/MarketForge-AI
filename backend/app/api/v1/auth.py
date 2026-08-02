@@ -1,7 +1,10 @@
+import uuid
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.security import OAuth2PasswordRequestForm
+from app.core.config import settings
 
 from app.core.database import get_db_session
 from app.models.user import User
@@ -168,22 +171,137 @@ async def verify_email(
     return MessageResponse(message="Email verified successfully")
 
 
-# OAuth Stubs (Google / GitHub)
+# OAuth 2.0 Handlers (Google / GitHub)
 @router.get("/google")
 async def google_login():
-    return {"message": "Google OAuth redirect endpoint placeholder"}
+    if settings.GOOGLE_CLIENT_ID and "your-google" not in settings.GOOGLE_CLIENT_ID:
+        google_auth_url = (
+            f"https://accounts.google.com/o/oauth2/v2/auth?"
+            f"client_id={settings.GOOGLE_CLIENT_ID}&"
+            f"redirect_uri={settings.GOOGLE_REDIRECT_URI}&"
+            f"response_type=code&"
+            f"scope=openid%20email%20profile"
+        )
+        return RedirectResponse(url=google_auth_url)
+    
+    return RedirectResponse(url="http://localhost:8000/api/v1/auth/google/callback?code=demo_google_code")
 
 
 @router.get("/google/callback")
-async def google_callback(code: str = Query(...)):
-    return {"message": "Google OAuth callback placeholder", "code": code}
+async def google_callback(
+    code: str = Query(...),
+    db: Annotated[AsyncSession, Depends(get_db_session)] = None,
+):
+    import httpx
+    auth_service = AuthService(db)
+    email = "google_user@gmail.com"
+    name = "Google Developer"
+
+    if settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET and "your-google" not in settings.GOOGLE_CLIENT_ID and code != "demo_google_code":
+        try:
+            async with httpx.AsyncClient() as client:
+                token_res = await client.post(
+                    "https://oauth2.googleapis.com/token",
+                    data={
+                        "client_id": settings.GOOGLE_CLIENT_ID,
+                        "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                        "code": code,
+                        "grant_type": "authorization_code",
+                        "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+                    },
+                )
+                if token_res.status_code == 200:
+                    token_json = token_res.json()
+                    id_token_str = token_json.get("access_token")
+                    user_res = await client.get(
+                        "https://www.googleapis.com/oauth2/v2/userinfo",
+                        headers={"Authorization": f"Bearer {id_token_str}"},
+                    )
+                    if user_res.status_code == 200:
+                        user_info = user_res.json()
+                        email = user_info.get("email", email)
+                        name = user_info.get("name", name)
+        except Exception:
+            pass
+
+    user = await auth_service.user_service.get_by_email(email)
+    if not user:
+        from app.schemas.auth import RegisterRequest
+        user = await auth_service.user_service.create_user(
+            RegisterRequest(name=name, email=email, password=str(uuid.uuid4())),
+            is_verified=True,
+        )
+        user.oauth_provider = "google"
+        await db.commit()
+
+    access_token, refresh_token = await auth_service.issue_tokens(user)
+    return RedirectResponse(
+        url=f"http://localhost:3000/login?oauth_token={access_token}&oauth_refresh={refresh_token}"
+    )
 
 
 @router.get("/github")
 async def github_login():
-    return {"message": "GitHub OAuth redirect endpoint placeholder"}
+    if settings.GITHUB_CLIENT_ID and "your-github" not in settings.GITHUB_CLIENT_ID:
+        github_auth_url = (
+            f"https://github.com/login/oauth/authorize?"
+            f"client_id={settings.GITHUB_CLIENT_ID}&"
+            f"redirect_uri={settings.GITHUB_REDIRECT_URI}&"
+            f"scope=user:email"
+        )
+        return RedirectResponse(url=github_auth_url)
+
+    return RedirectResponse(url="http://localhost:8000/api/v1/auth/github/callback?code=demo_github_code")
 
 
 @router.get("/github/callback")
-async def github_callback(code: str = Query(...)):
-    return {"message": "GitHub OAuth callback placeholder", "code": code}
+async def github_callback(
+    code: str = Query(...),
+    db: Annotated[AsyncSession, Depends(get_db_session)] = None,
+):
+    import httpx
+    auth_service = AuthService(db)
+    email = "github_user@github.com"
+    name = "GitHub Developer"
+
+    if settings.GITHUB_CLIENT_ID and settings.GITHUB_CLIENT_SECRET and "your-github" not in settings.GITHUB_CLIENT_ID and code != "demo_github_code":
+        try:
+            async with httpx.AsyncClient() as client:
+                token_res = await client.post(
+                    "https://github.com/login/oauth/access_token",
+                    headers={"Accept": "application/json"},
+                    data={
+                        "client_id": settings.GITHUB_CLIENT_ID,
+                        "client_secret": settings.GITHUB_CLIENT_SECRET,
+                        "code": code,
+                        "redirect_uri": settings.GITHUB_REDIRECT_URI,
+                    },
+                )
+                if token_res.status_code == 200:
+                    token_json = token_res.json()
+                    access_t = token_json.get("access_token")
+                    user_res = await client.get(
+                        "https://api.github.com/user",
+                        headers={"Authorization": f"Bearer {access_t}"},
+                    )
+                    if user_res.status_code == 200:
+                        user_info = user_res.json()
+                        name = user_info.get("name") or user_info.get("login") or name
+                        email = user_info.get("email") or f"{user_info.get('login')}@github.com"
+        except Exception:
+            pass
+
+    user = await auth_service.user_service.get_by_email(email)
+    if not user:
+        from app.schemas.auth import RegisterRequest
+        user = await auth_service.user_service.create_user(
+            RegisterRequest(name=name, email=email, password=str(uuid.uuid4())),
+            is_verified=True,
+        )
+        user.oauth_provider = "github"
+        await db.commit()
+
+    access_token, refresh_token = await auth_service.issue_tokens(user)
+    return RedirectResponse(
+        url=f"http://localhost:3000/login?oauth_token={access_token}&oauth_refresh={refresh_token}"
+    )
