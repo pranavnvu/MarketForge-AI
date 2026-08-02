@@ -11,6 +11,19 @@ from app.schemas.auth import (
     ChangePasswordRequest,
     OAuthCallbackRequest,
 )
+from app.schemas.workspace import (
+    WorkspaceBase,
+    WorkspaceCreate,
+    WorkspaceUpdate,
+    WorkspaceResponse,
+    WorkspaceMemberResponse,
+)
+from app.schemas.project import (
+    ProjectBase,
+    ProjectCreate,
+    ProjectUpdate,
+    ProjectResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -30,4 +43,13 @@ __all__ = [
     "ResetPasswordRequest",
     "ChangePasswordRequest",
     "OAuthCallbackRequest",
+    "WorkspaceBase",
+    "WorkspaceCreate",
+    "WorkspaceUpdate",
+    "WorkspaceResponse",
+    "WorkspaceMemberResponse",
+    "ProjectBase",
+    "ProjectCreate",
+    "ProjectUpdate",
+    "ProjectResponse",
 ]

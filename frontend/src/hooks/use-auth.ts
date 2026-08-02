@@ -76,7 +76,7 @@ export function useLogout() {
 
 // ---- Get Current User ----
 export function useCurrentUser() {
-  const { isAuthenticated, setAuth, setLoading } = useAuthStore();
+  const { isAuthenticated, setLoading } = useAuthStore();
 
   return useQuery({
     queryKey: authKeys.me(),

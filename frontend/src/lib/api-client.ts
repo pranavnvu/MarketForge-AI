@@ -2,7 +2,7 @@
 // DevForge AI — API Client
 // ============================================
 
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { API_URL, ROUTES } from './constants';
 
 // Create axios instance

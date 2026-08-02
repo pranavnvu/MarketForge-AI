@@ -4,7 +4,7 @@
 
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Play, Pause, RefreshCw, Download, GitBranch } from 'lucide-react';
+import { ArrowLeft, Play, RefreshCw, Download, GitBranch } from 'lucide-react';
 import { ROUTES, AGENT_CONFIG } from '@/lib/constants';
 import type { AgentType } from '@/types';
 
