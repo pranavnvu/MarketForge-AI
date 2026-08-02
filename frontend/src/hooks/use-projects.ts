@@ -13,12 +13,27 @@ export const projectKeys = {
   detail: (id: string) => [...projectKeys.all, 'detail', id] as const,
 };
 
+// Transform snake_case API response to camelCase Project
+function transformProject(raw: any): Project {
+  return {
+    id: raw.id,
+    workspaceId: raw.workspace_id ?? raw.workspaceId ?? '',
+    name: raw.name,
+    description: raw.description ?? '',
+    status: raw.status,
+    config: raw.config ?? {},
+    progress: raw.progress ?? 0,
+    createdAt: raw.created_at ?? raw.createdAt ?? '',
+    updatedAt: raw.updated_at ?? raw.updatedAt ?? '',
+  };
+}
+
 export function useProjects() {
   return useQuery({
     queryKey: projectKeys.lists(),
     queryFn: async () => {
-      const response = await apiClient.get<Project[]>('/projects');
-      return response.data;
+      const response = await apiClient.get<any[]>('/projects');
+      return response.data.map(transformProject);
     },
   });
 }
@@ -27,8 +42,8 @@ export function useProject(id: string) {
   return useQuery({
     queryKey: projectKeys.detail(id),
     queryFn: async () => {
-      const response = await apiClient.get<Project>(`/projects/${id}`);
-      return response.data;
+      const response = await apiClient.get<any>(`/projects/${id}`);
+      return transformProject(response.data);
     },
     enabled: !!id,
   });

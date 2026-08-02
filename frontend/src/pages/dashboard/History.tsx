@@ -50,11 +50,25 @@ function estimateFileCount(project: Project): number {
 }
 
 function estimateDuration(project: Project): string {
+  if (!project.createdAt || !project.updatedAt) return '—';
   const created = new Date(project.createdAt).getTime();
   const updated = new Date(project.updatedAt).getTime();
-  const diffMs = Math.max(updated - created, 1000);
-  const totalSec = Math.round(diffMs / 1000);
+  if (isNaN(created) || isNaN(updated)) return '—';
 
+  const diffMs = updated - created;
+  if (diffMs <= 0) {
+    // Same timestamp — show time since creation instead
+    const sinceMs = Date.now() - created;
+    if (sinceMs < 60_000) return 'Just now';
+    const mins = Math.floor(sinceMs / 60_000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ${mins % 60}m ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+  }
+
+  const totalSec = Math.round(diffMs / 1000);
   if (totalSec < 60) return `${totalSec}s`;
   const mins = Math.floor(totalSec / 60);
   const secs = totalSec % 60;
@@ -65,12 +79,16 @@ function estimateDuration(project: Project): string {
 }
 
 function formatDate(dateStr: string): string {
+  if (!dateStr) return '—';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function formatTime(dateStr: string): string {
+  if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
   return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
