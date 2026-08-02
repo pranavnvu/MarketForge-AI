@@ -2,52 +2,54 @@
 // DevForge AI — Projects Page
 // ============================================
 
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Search, Filter, MoreVertical } from 'lucide-react';
+import { Plus, Search, MoreVertical, Loader2 } from 'lucide-react';
 import { ROUTES, PROJECT_STATUS_CONFIG } from '@/lib/constants';
+import { useProjects } from '@/hooks/use-projects';
 import type { ProjectStatus } from '@/types';
 
-const mockProjects = [
+const defaultDemoProjects = [
   {
-    id: '1',
+    id: 'demo-1',
     name: 'Expense Tracker App',
     description: 'A full-stack expense tracking application with budget management and analytics.',
     status: 'in_progress' as ProjectStatus,
     progress: 65,
     agents: 4,
-    createdAt: '2024-01-15',
+    createdAt: '2026-08-01T12:00:00Z',
   },
   {
-    id: '2',
+    id: 'demo-2',
     name: 'E-Commerce Platform',
     description: 'Modern e-commerce platform with payment processing and inventory management.',
     status: 'planning' as ProjectStatus,
     progress: 25,
     agents: 2,
-    createdAt: '2024-01-14',
+    createdAt: '2026-08-01T10:00:00Z',
   },
   {
-    id: '3',
+    id: 'demo-3',
     name: 'Task Management Tool',
     description: 'Collaborative task management with Kanban boards and team features.',
     status: 'completed' as ProjectStatus,
     progress: 100,
     agents: 10,
-    createdAt: '2024-01-10',
-  },
-  {
-    id: '4',
-    name: 'Social Media Dashboard',
-    description: 'Analytics dashboard for social media accounts with scheduling features.',
-    status: 'draft' as ProjectStatus,
-    progress: 0,
-    agents: 0,
-    createdAt: '2024-01-16',
+    createdAt: '2026-07-28T09:00:00Z',
   },
 ];
 
 export default function Projects() {
+  const { data: dbProjects = [], isLoading } = useProjects();
+  const [search, setSearch] = useState('');
+
+  // Combine real database projects with initial default projects
+  const allProjects = [...dbProjects, ...defaultDemoProjects].filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -73,31 +75,37 @@ export default function Projects() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Search projects..."
             className="w-full rounded-xl border border-border/50 bg-background py-2 pl-10 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
-        <button className="inline-flex items-center gap-2 rounded-xl border border-border/50 px-3 py-2 text-sm text-muted-foreground hover:bg-accent transition-colors">
-          <Filter className="h-4 w-4" />
-          Filter
-        </button>
       </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      )}
 
       {/* Projects Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {mockProjects.map((project, index) => {
-          const statusConfig = PROJECT_STATUS_CONFIG[project.status];
+        {allProjects.map((project, index) => {
+          const statusKey = (project.status || 'planning') as keyof typeof PROJECT_STATUS_CONFIG;
+          const statusConfig = PROJECT_STATUS_CONFIG[statusKey] || PROJECT_STATUS_CONFIG.planning;
+          const createdDate = project.createdAt ? new Date(project.createdAt).toLocaleDateString() : 'Just now';
 
           return (
             <motion.div
               key={project.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+              transition={{ delay: index * 0.05 }}
               whileHover={{ y: -4 }}
             >
               <Link
-                to={`${ROUTES.PROJECTS}/${project.id}`}
+                to={`/dashboard/projects/${project.id}/workspace`}
                 className="block rounded-2xl border border-border/50 bg-card/50 p-5 backdrop-blur-sm transition-shadow hover:shadow-lg group"
               >
                 <div className="flex items-start justify-between">
@@ -119,25 +127,25 @@ export default function Projects() {
                   {project.name}
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-                  {project.description}
+                  {project.description || 'AI Multi-Agent project workspace'}
                 </p>
 
                 <div className="mt-4">
                   <div className="flex items-center justify-between text-xs mb-1.5">
                     <span className="text-muted-foreground">Progress</span>
-                    <span className="font-medium">{project.progress}%</span>
+                    <span className="font-medium">{project.progress ?? 10}%</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-accent">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 transition-all"
-                      style={{ width: `${project.progress}%` }}
+                      style={{ width: `${project.progress ?? 10}%` }}
                     />
                   </div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{project.agents} agents</span>
-                  <span>{project.createdAt}</span>
+                  <span>10 agents active</span>
+                  <span>{createdDate}</span>
                 </div>
               </Link>
             </motion.div>

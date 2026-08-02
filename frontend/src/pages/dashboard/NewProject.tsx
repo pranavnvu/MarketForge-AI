@@ -1,9 +1,10 @@
 // DevForge AI — New Project Page
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Sparkles, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Sparkles, Check, Loader2 } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
+import { useCreateProject } from '@/hooks/use-projects';
 
 const steps = ['Describe', 'Configure', 'Review'];
 
@@ -17,14 +18,18 @@ export default function NewProject() {
     language: 'typescript',
     deployTarget: 'docker',
   });
-  const navigate = useNavigate();
+
+  const createMutation = useCreateProject();
 
   const updateField = (field: string, value: string) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
 
   const handleSubmit = () => {
-    console.log('Create project:', formData);
-    navigate(ROUTES.PROJECTS);
+    if (!formData.name.trim()) {
+      setCurrentStep(0);
+      return;
+    }
+    createMutation.mutate(formData);
   };
 
   return (
@@ -39,6 +44,15 @@ export default function NewProject() {
           <p className="text-sm text-muted-foreground">Describe your idea and let AI agents build it.</p>
         </div>
       </div>
+
+      {/* Error alert */}
+      {createMutation.isError && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+          {(createMutation.error as any)?.response?.data?.detail ||
+            (createMutation.error as any)?.response?.data?.message ||
+            'Failed to create project. Please try again.'}
+        </div>
+      )}
 
       {/* Step Indicator */}
       <div className="flex items-center gap-2">
@@ -61,9 +75,9 @@ export default function NewProject() {
           {currentStep === 0 && (
             <motion.div key="step-0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm font-medium">Project Name</label>
+                <label className="mb-1.5 block text-sm font-medium">Project Name *</label>
                 <input type="text" value={formData.name} onChange={(e) => updateField('name', e.target.value)}
-                  placeholder="e.g. Expense Tracker App" className="w-full rounded-xl border border-border/50 bg-background px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+                  placeholder="e.g. Expense Tracker App" className="w-full rounded-xl border border-border/50 bg-background px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" required />
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Describe Your Idea</label>
@@ -145,7 +159,7 @@ export default function NewProject() {
 
       {/* Navigation */}
       <div className="flex items-center justify-between">
-        <button onClick={() => setCurrentStep(Math.max(0, currentStep - 1))} disabled={currentStep === 0}
+        <button onClick={() => setCurrentStep(Math.max(0, currentStep - 1))} disabled={currentStep === 0 || createMutation.isPending}
           className="rounded-xl border border-border/50 px-4 py-2.5 text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
           Back
         </button>
@@ -155,9 +169,17 @@ export default function NewProject() {
             Next <ArrowRight className="h-4 w-4" />
           </button>
         ) : (
-          <button onClick={handleSubmit}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-cyan-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-shadow">
-            <Sparkles className="h-4 w-4" />Start Building
+          <button onClick={handleSubmit} disabled={createMutation.isPending || !formData.name.trim()}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-cyan-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-shadow disabled:opacity-50">
+            {createMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Creating Project...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" /> Start Building
+              </>
+            )}
           </button>
         )}
       </div>

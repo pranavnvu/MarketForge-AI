@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional, List
+from typing import Optional, List, Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,13 +15,15 @@ class ProjectService:
         self.db = db
         self.workspace_service = WorkspaceService(db)
 
-    async def get_by_id(self, project_id: uuid.UUID) -> Optional[Project]:
-        result = await self.db.execute(select(Project).where(Project.id == project_id))
+    async def get_by_id(self, project_id: Any) -> Optional[Project]:
+        project_id_str = str(project_id)
+        result = await self.db.execute(select(Project).where(Project.id == project_id_str))
         return result.scalar_one_or_none()
 
-    async def get_user_projects(self, user_id: uuid.UUID) -> List[Project]:
-        workspaces = await self.workspace_service.get_user_workspaces(user_id)
-        ws_ids = [w.id for w in workspaces]
+    async def get_user_projects(self, user_id: Any) -> List[Project]:
+        user_id_str = str(user_id)
+        workspaces = await self.workspace_service.get_user_workspaces(user_id_str)
+        ws_ids = [str(w.id) for w in workspaces]
         if not ws_ids:
             return []
         result = await self.db.execute(
@@ -30,12 +32,25 @@ class ProjectService:
         return list(result.scalars().all())
 
     async def create_project(self, user: User, proj_in: ProjectCreate) -> Project:
-        target_ws_id = proj_in.workspace_id
+        target_ws_id = str(proj_in.workspace_id) if proj_in.workspace_id else None
         if not target_ws_id:
             workspaces = await self.workspace_service.get_user_workspaces(user.id)
             if not workspaces:
-                raise NotFoundError("No default workspace found for user")
-            target_ws_id = workspaces[0].id
+                from app.models.workspace import Workspace, WorkspacePlan, WorkspaceMember, WorkspaceRole
+                ws = Workspace(
+                    name=f"{user.name}'s Workspace",
+                    description="Default workspace",
+                    owner_id=str(user.id),
+                    plan=WorkspacePlan.FREE,
+                )
+                self.db.add(ws)
+                await self.db.flush()
+                member = WorkspaceMember(workspace_id=str(ws.id), user_id=str(user.id), role=WorkspaceRole.OWNER)
+                self.db.add(member)
+                await self.db.commit()
+                target_ws_id = str(ws.id)
+            else:
+                target_ws_id = str(workspaces[0].id)
 
         project = Project(
             workspace_id=target_ws_id,
@@ -43,7 +58,7 @@ class ProjectService:
             description=proj_in.description,
             status=ProjectStatus.PLANNING,
             progress=5,
-            config=proj_in.config,
+            config=proj_in.config or {},
         )
         self.db.add(project)
         await self.db.commit()
