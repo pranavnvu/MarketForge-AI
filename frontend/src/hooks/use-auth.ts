@@ -143,12 +143,8 @@ export function useCurrentUser() {
 export function useForgotPassword() {
   return useMutation({
     mutationFn: async (email: string) => {
-      try {
-        const response = await apiClient.post('/auth/forgot-password', { email });
-        return response.data;
-      } catch (err) {
-        return { message: 'Reset link generated successfully' };
-      }
+      const response = await apiClient.post('/auth/forgot-password', { email });
+      return response.data;
     },
   });
 }

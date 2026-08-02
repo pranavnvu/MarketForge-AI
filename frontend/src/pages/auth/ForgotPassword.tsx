@@ -3,16 +3,15 @@
 // ============================================
 
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, ArrowLeft, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
 import { useForgotPassword } from '@/hooks/use-auth';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const forgotMutation = useForgotPassword();
-  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,23 +38,9 @@ export default function ForgotPassword() {
           We've sent a password reset link to <strong className="text-white">{email}</strong>
         </p>
 
-        {/* Dev Mode Reset Button */}
-        <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 p-4 text-left space-y-2">
-          <p className="text-xs font-semibold text-purple-300">⚡ Dev Mode — Test Link</p>
-          <p className="text-xs text-slate-400">
-            Since local SMTP email is not configured, click the button below to test resetting your password directly:
-          </p>
-          <button
-            onClick={() => navigate('/reset-password?token=demo_reset_token_123')}
-            className="flex items-center gap-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 underline"
-          >
-            Open Password Reset Page <ExternalLink className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
         <Link
           to="/login"
-          className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+          className="mt-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Sign In

@@ -1,0 +1,10 @@
+{
+  "name": "devforge-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DevForge AI — Autonomous Multi-Agent Software Engineering Platform",
+  "scripts": {
+    "dev": "bash start.sh",
+    "start": "bash start.sh"
+  }
+}

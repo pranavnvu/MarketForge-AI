@@ -130,8 +130,10 @@ async def forgot_password(
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ):
     auth_service = AuthService(db)
-    await auth_service.create_forgot_password_token(req.email)
-    # Always return success message for privacy/security
+    token = await auth_service.create_forgot_password_token(req.email)
+    if token:
+        from app.services.email_service import EmailService
+        await EmailService.send_password_reset_email(req.email, token)
     return MessageResponse(
         message="If an account with that email exists, a password reset link has been sent."
     )
