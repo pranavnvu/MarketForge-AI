@@ -13,6 +13,16 @@ export const projectKeys = {
   detail: (id: string) => [...projectKeys.all, 'detail', id] as const,
 };
 
+// Ensure timestamps from the backend are treated as UTC
+function toUTC(ts: string | undefined | null): string {
+  if (!ts) return '';
+  // If the timestamp has no timezone info (no Z, no +/-offset), append Z
+  if (ts && !ts.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(ts)) {
+    return ts + 'Z';
+  }
+  return ts;
+}
+
 // Transform snake_case API response to camelCase Project
 function transformProject(raw: any): Project {
   return {
@@ -23,8 +33,8 @@ function transformProject(raw: any): Project {
     status: raw.status,
     config: raw.config ?? {},
     progress: raw.progress ?? 0,
-    createdAt: raw.created_at ?? raw.createdAt ?? '',
-    updatedAt: raw.updated_at ?? raw.updatedAt ?? '',
+    createdAt: toUTC(raw.created_at ?? raw.createdAt),
+    updatedAt: toUTC(raw.updated_at ?? raw.updatedAt),
   };
 }
 
