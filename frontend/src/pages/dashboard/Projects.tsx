@@ -41,23 +41,40 @@ export default function Projects() {
   const { data: dbProjects = [], isLoading } = useProjects();
   const deleteMutation = useDeleteProject();
   const [search, setSearch] = useState('');
-  const [demoProjectsList, setDemoProjectsList] = useState(defaultDemoProjects);
+
+  // Persist deleted project IDs in localStorage so deletion persists across browser refreshes
+  const [deletedIds, setDeletedIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('devforge_deleted_project_ids');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (id.startsWith('demo-')) {
-      setDemoProjectsList((prev) => prev.filter((p) => p.id !== id));
-    } else {
+    const newDeleted = [...deletedIds, id];
+    setDeletedIds(newDeleted);
+    try {
+      localStorage.setItem('devforge_deleted_project_ids', JSON.stringify(newDeleted));
+    } catch {
+      // Ignore localStorage write errors
+    }
+
+    if (!id.startsWith('demo-')) {
       deleteMutation.mutate(id);
     }
   };
 
-  // Combine real database projects with initial default projects
-  const allProjects = [...dbProjects, ...demoProjectsList].filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
+  // Combine real database projects with initial default projects and filter out deleted IDs
+  const allProjects = [...dbProjects, ...defaultDemoProjects].filter(
+    (p) =>
+      !deletedIds.includes(p.id) &&
+      (p.name.toLowerCase().includes(search.toLowerCase()) ||
+        (p.description && p.description.toLowerCase().includes(search.toLowerCase())))
   );
 
   return (
@@ -129,7 +146,7 @@ export default function Projects() {
                   >
                     {statusConfig.label}
                   </span>
-                  
+
                   <button
                     onClick={(e) => handleDelete(e, project.id)}
                     title="Delete Project"
