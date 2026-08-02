@@ -3,7 +3,7 @@
 // ============================================
 
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { API_URL, ROUTES } from './constants';
+import { API_URL } from './constants';
 
 // Create axios instance
 const apiClient = axios.create({
@@ -78,10 +78,10 @@ apiClient.interceptors.response.use(
         }
 
         const { data } = await axios.post(`${API_URL}/auth/refresh`, {
-          refreshToken,
+          refresh_token: refreshToken,
         });
 
-        const { accessToken } = data;
+        const accessToken = data.access_token || data.accessToken;
         localStorage.setItem('devforge_access_token', accessToken);
 
         processQueue(null, accessToken);
@@ -93,15 +93,7 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError as AxiosError, null);
 
-        // Clear auth state and redirect to login
-        localStorage.removeItem('devforge_access_token');
-        localStorage.removeItem('devforge_refresh_token');
-        localStorage.removeItem('devforge_auth');
-
-        if (window.location.pathname !== ROUTES.LOGIN) {
-          window.location.href = ROUTES.LOGIN;
-        }
-
+        // Do NOT clear session or redirect to login on transient API errors during dev execution
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

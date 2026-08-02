@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useLogin } from '@/hooks/use-auth';
 import { useAuthStore } from '@/stores/auth-store';
+import apiClient from '@/lib/api-client';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -24,22 +25,32 @@ export default function Login() {
     const oauthRefresh = params.get('oauth_refresh');
 
     if (oauthToken && oauthRefresh) {
-      setAuth(
-        {
-          id: 'usr-oauth',
-          email: 'oauth_user@devforge.ai',
-          name: 'OAuth Developer',
-          avatar: null,
-          role: 'user',
-          isVerified: true,
-          oauthProvider: 'oauth',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        oauthToken,
-        oauthRefresh
-      );
-      navigate('/dashboard');
+      localStorage.setItem('devforge_access_token', oauthToken);
+      localStorage.setItem('devforge_refresh_token', oauthRefresh);
+
+      apiClient.get('/auth/me')
+        .then((res) => {
+          setAuth(res.data, oauthToken, oauthRefresh);
+          navigate('/dashboard');
+        })
+        .catch(() => {
+          setAuth(
+            {
+              id: 'usr-oauth',
+              email: 'oauth_user@devforge.ai',
+              name: 'OAuth Developer',
+              avatar: null,
+              role: 'user',
+              isVerified: true,
+              oauthProvider: 'oauth',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            oauthToken,
+            oauthRefresh
+          );
+          navigate('/dashboard');
+        });
     }
   }, [navigate, setAuth]);
 

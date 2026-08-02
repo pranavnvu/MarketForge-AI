@@ -12,8 +12,9 @@ import {
   ArrowUpRight,
   Clock,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { ROUTES, AGENT_CONFIG } from '@/lib/constants';
+import { Link, useNavigate } from 'react-router-dom';
+import { ROUTES, AGENT_CONFIG, PROJECT_STATUS_CONFIG } from '@/lib/constants';
+import { useProjects } from '@/hooks/use-projects';
 
 // ---- Stat Card ----
 function StatCard({
@@ -81,6 +82,33 @@ function ActivityItem({
 }
 
 export default function Dashboard() {
+  const { data: dbProjects = [] } = useProjects();
+  const navigate = useNavigate();
+
+  const demoProjects = [
+    {
+      id: 'demo-1',
+      name: 'Expense Tracker App',
+      status: 'in_progress',
+      progress: 65,
+    },
+    {
+      id: 'demo-2',
+      name: 'E-Commerce Platform',
+      status: 'planning',
+      progress: 25,
+    },
+    {
+      id: 'demo-3',
+      name: 'Task Management Tool',
+      status: 'completed',
+      progress: 100,
+    },
+  ];
+
+  const displayProjects = dbProjects.length > 0 ? dbProjects : demoProjects;
+  const activeCount = dbProjects.length > 0 ? dbProjects.length : 3;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -104,7 +132,7 @@ export default function Dashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Active Projects"
-          value={3}
+          value={activeCount}
           icon={FolderKanban}
           trend="+2 this week"
           color="#8B5CF6"
@@ -147,64 +175,48 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-3">
-            {[
-              {
-                name: 'Expense Tracker App',
-                status: 'In Progress',
-                statusColor: '#3B82F6',
-                agents: 4,
-                progress: 65,
-              },
-              {
-                name: 'E-Commerce Platform',
-                status: 'Planning',
-                statusColor: '#8B5CF6',
-                agents: 2,
-                progress: 25,
-              },
-              {
-                name: 'Task Management Tool',
-                status: 'Completed',
-                statusColor: '#10B981',
-                agents: 10,
-                progress: 100,
-              },
-            ].map((project) => (
-              <div
-                key={project.name}
-                className="flex items-center gap-4 rounded-xl border border-border/30 p-4 hover:bg-accent/30 transition-colors cursor-pointer"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium">{project.name}</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <span
-                      className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
-                      style={{
-                        color: project.statusColor,
-                        backgroundColor: `${project.statusColor}15`,
-                      }}
-                    >
-                      {project.status}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {project.agents} agents active
-                    </span>
+            {displayProjects.slice(0, 5).map((project) => {
+              const statusKey = (project.status || 'planning') as keyof typeof PROJECT_STATUS_CONFIG;
+              const statusConfig = PROJECT_STATUS_CONFIG[statusKey] || PROJECT_STATUS_CONFIG.planning;
+
+              return (
+                <div
+                  key={project.id}
+                  onClick={() => navigate(`/dashboard/projects/${project.id}/workspace`)}
+                  className="flex items-center gap-4 rounded-xl border border-border/30 p-4 hover:bg-accent/30 transition-colors cursor-pointer"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium">{project.name}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span
+                        className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
+                        style={{
+                          color: statusConfig.color,
+                          backgroundColor: `${statusConfig.color}15`,
+                        }}
+                      >
+                        {statusConfig.label}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        10 agents active
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-24">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium">{project.progress ?? 10}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-accent">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 transition-all"
+                        style={{ width: `${project.progress ?? 10}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="w-24">
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span className="font-medium">{project.progress}%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-accent">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 transition-all"
-                      style={{ width: `${project.progress}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

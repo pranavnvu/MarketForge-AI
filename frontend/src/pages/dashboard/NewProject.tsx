@@ -136,16 +136,16 @@ export default function NewProject() {
               <h3 className="text-lg font-semibold">Review Your Project</h3>
               <div className="space-y-3 rounded-xl bg-accent/30 p-4">
                 {[
-                  ['Name', formData.name || '—'],
-                  ['Description', formData.description || '—'],
-                  ['Target Users', formData.targetUsers || '—'],
-                  ['Tech Stack', formData.techStack],
-                  ['Language', formData.language],
-                  ['Deploy To', formData.deployTarget],
-                ].map(([label, value]) => (
+                  { label: 'Name', value: formData.name || '—' },
+                  { label: 'Description', value: formData.description || '—' },
+                  { label: 'Target Users', value: formData.targetUsers || '—' },
+                  { label: 'Tech Stack', value: formData.techStack },
+                  { label: 'Language', value: formData.language },
+                  { label: 'Deploy To', value: formData.deployTarget },
+                ].map(({ label, value }) => (
                   <div key={label} className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{label}</span>
-                    <span className="font-medium capitalize max-w-xs text-right truncate">{value}</span>
+                    <span className="font-medium capitalize max-w-xs text-right truncate">{String(value)}</span>
                   </div>
                 ))}
               </div>
