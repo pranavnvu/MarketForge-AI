@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { CommandPalette } from '@/components/CommandPalette';
 import { APP_NAME, ROUTES } from '@/lib/constants';
 
 // ---- Sidebar Navigation Items ----
@@ -286,6 +287,7 @@ export function DashboardLayout() {
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       <MobileSidebar />
+      <CommandPalette />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
