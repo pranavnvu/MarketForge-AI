@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api/v1"
     
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/devforge"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./devforge.db"
     REDIS_URL: str = "redis://localhost:6379/0"
     
     QDRANT_URL: str = "http://localhost:6333"

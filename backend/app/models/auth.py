@@ -1,3 +1,4 @@
+from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -13,8 +14,8 @@ if TYPE_CHECKING:
 class RefreshToken(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "refresh_tokens"
 
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     token: Mapped[str] = mapped_column(String(512), unique=True, index=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -26,8 +27,8 @@ class RefreshToken(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 class PasswordResetToken(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "password_reset_tokens"
 
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     token: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -37,8 +38,8 @@ class PasswordResetToken(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 class EmailVerificationToken(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "email_verification_tokens"
 
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     token: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

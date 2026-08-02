@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional, List
+from typing import Optional, List, Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,8 +13,9 @@ class UserService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_by_id(self, user_id: uuid.UUID) -> Optional[User]:
-        result = await self.db.execute(select(User).where(User.id == user_id))
+    async def get_by_id(self, user_id: Any) -> Optional[User]:
+        user_id_str = str(user_id)
+        result = await self.db.execute(select(User).where(User.id == user_id_str))
         return result.scalar_one_or_none()
 
     async def get_by_email(self, email: str) -> Optional[User]:
@@ -27,9 +28,9 @@ class UserService:
             email=user_in.email.lower(),
             name=user_in.name,
             hashed_password=hashed,
-            role=user_in.role,
+            role=getattr(user_in, "role", UserRole.USER),
             is_verified=is_verified,
-            avatar=user_in.avatar,
+            avatar=getattr(user_in, "avatar", None),
         )
         self.db.add(user)
         await self.db.flush()

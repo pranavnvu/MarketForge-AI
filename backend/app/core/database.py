@@ -15,21 +15,22 @@ from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
-# Fallback to local SQLite file for local dev when PostgreSQL is not running
+# Use SQLite for local development execution
 db_url = settings.DATABASE_URL
-engine_kwargs: dict[str, Any] = {"pool_pre_ping": True}
+if "postgresql" in db_url:
+    db_url = "sqlite+aiosqlite:///./devforge.db"
 
 if "sqlite" in db_url:
     engine_kwargs = {"connect_args": {"check_same_thread": False}}
 else:
-    engine_kwargs.update({"pool_size": 10, "max_overflow": 20})
+    engine_kwargs = {"pool_size": 10, "max_overflow": 20, "pool_pre_ping": True}
 
 
 class DatabaseSessionManager:
     def __init__(self, host: str, kwargs: dict[str, Any]):
         self.engine = create_async_engine(host, **kwargs)
         self.session_maker = async_sessionmaker(
-            autocommit=False, autoflush=False, bind=self.engine
+            autocommit=False, autoflush=False, expire_on_commit=False, bind=self.engine
         )
 
     async def close(self):
@@ -67,12 +68,8 @@ sessionmanager = DatabaseSessionManager(db_url, engine_kwargs)
 
 
 async def get_db_session():
-    try:
-        async with sessionmanager.session() as session:
-            yield session
-    except Exception as e:
-        logger.warning("db_session_failed", error=str(e))
-        yield None
+    async with sessionmanager.session() as session:
+        yield session
 
 
 Base = declarative_base()
