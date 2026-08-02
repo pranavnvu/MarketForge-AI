@@ -18,64 +18,70 @@ import {
   Check,
 } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
+import { useProject } from '@/hooks/use-projects';
 
-const mockFiles = [
-  {
-    path: 'backend/app/main.py',
-    language: 'python',
-    agent: 'backend_dev',
-    content: `from fastapi import FastAPI
+export default function ProjectWorkspace() {
+  const { id } = useParams<{ id: string }>();
+  const { data: project } = useProject(id || '');
+
+  const projectName = project?.name || 'Project Workspace';
+  const projectTech = project?.config?.techStack || 'fullstack';
+  const projectLang = project?.config?.language || 'typescript';
+
+  const dynamicFiles = [
+    {
+      path: 'backend/app/main.py',
+      language: 'python',
+      agent: 'backend_dev',
+      content: `from fastapi import FastAPI
 from app.api.v1 import router
 
-app = FastAPI(title="Expense Tracker API", version="1.0.0")
+app = FastAPI(title="${projectName} API", version="1.0.0")
 app.include_router(router, prefix="/api/v1")
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "app": "Expense Tracker"}
+    return {"status": "ok", "app": "${projectName}"}
 `,
-  },
-  {
-    path: 'backend/app/models/expense.py',
-    language: 'python',
-    agent: 'backend_dev',
-    content: `from sqlalchemy import Column, String, Float, DateTime
+    },
+    {
+      path: `backend/app/models/${projectName.toLowerCase().replace(/[^a-z0-9]/g, '_')}.py`,
+      language: 'python',
+      agent: 'backend_dev',
+      content: `from sqlalchemy import Column, String, DateTime, JSON
 from datetime import datetime
 from app.db import Base
 
-class Expense(Base):
-    __tablename__ = "expenses"
+class ${projectName.replace(/[^a-zA-Z0-9]/g, '')}Model(Base):
+    __tablename__ = "${projectName.toLowerCase().replace(/[^a-z0-9]/g, '_')}"
     
     id = Column(String, primary_key=True)
     title = Column(String, nullable=False)
-    amount = Column(Float, nullable=False)
-    category = Column(String, nullable=False)
+    data = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 `,
-  },
-  {
-    path: 'frontend/src/App.tsx',
-    language: 'typescript',
-    agent: 'frontend_dev',
-    content: `import React, { useState } from 'react';
+    },
+    {
+      path: 'frontend/src/App.tsx',
+      language: 'typescript',
+      agent: 'frontend_dev',
+      content: `import React, { useState } from 'react';
 
 export default function App() {
-  const [expenses, setExpenses] = useState([]);
-
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold">Expense Tracker</h1>
-      <p className="text-gray-500 mt-2">Manage your budgets effortlessly.</p>
+      <h1 className="text-3xl font-bold">${projectName}</h1>
+      <p className="text-gray-500 mt-2">Built autonomously with DevForge AI Multi-Agent Platform.</p>
     </div>
   );
 }
 `,
-  },
-  {
-    path: 'docker-compose.yml',
-    language: 'yaml',
-    agent: 'devops',
-    content: `version: '3.8'
+    },
+    {
+      path: 'docker-compose.yml',
+      language: 'yaml',
+      agent: 'devops',
+      content: `version: '3.8'
 services:
   backend:
     build: ./backend
@@ -86,27 +92,27 @@ services:
     ports:
       - "3000:3000"
 `,
-  },
-];
+    },
+  ];
 
-const mockLogs = [
-  { id: '1', time: '10:00:01', level: 'info', agent: 'Product Manager', message: 'Analyzing project scope & generating PRD...' },
-  { id: '2', time: '10:00:05', level: 'info', agent: 'Architect', message: 'Designing database schema & API endpoints...' },
-  { id: '3', time: '10:00:12', level: 'info', agent: 'Planner', message: 'Created 6 task execution items in sprint plan.' },
-  { id: '4', time: '10:00:20', level: 'info', agent: 'Backend Developer', message: 'Generated FastAPI endpoints and SQLAlchemy models.' },
-  { id: '5', time: '10:00:35', level: 'info', agent: 'Frontend Developer', message: 'Generated React components & Vite configuration.' },
-  { id: '6', time: '10:00:48', level: 'info', agent: 'QA Engineer', message: '48/48 unit tests passing (92.5% coverage).' },
-  { id: '7', time: '10:01:00', level: 'info', agent: 'Security Analyst', message: 'OWASP scan completed: 0 vulnerabilities found.' },
-];
+  const mockLogs = [
+    { id: '1', time: '10:00:01', level: 'info', agent: 'Product Manager', message: `Analyzing project scope & generating PRD for ${projectName}...` },
+    { id: '2', time: '10:00:05', level: 'info', agent: 'Architect', message: `Designing database schema & API endpoints for ${projectName}...` },
+    { id: '3', time: '10:00:12', level: 'info', agent: 'Planner', message: 'Created 6 task execution items in sprint plan.' },
+    { id: '4', time: '10:00:20', level: 'info', agent: 'Backend Developer', message: 'Generated FastAPI endpoints and SQLAlchemy models.' },
+    { id: '5', time: '10:00:35', level: 'info', agent: 'Frontend Developer', message: 'Generated React components & Vite configuration.' },
+    { id: '6', time: '10:00:48', level: 'info', agent: 'QA Engineer', message: '48/48 unit tests passing (92.5% coverage).' },
+    { id: '7', time: '10:01:00', level: 'info', agent: 'Security Analyst', message: 'OWASP scan completed: 0 vulnerabilities found.' },
+  ];
 
-export default function ProjectWorkspace() {
-  const { id } = useParams();
   const [activeTab, setActiveTab] = useState<'chat' | 'logs' | 'code' | 'architecture' | 'tasks' | 'terminal'>('code');
-  const [selectedFile, setSelectedFile] = useState(mockFiles[0]);
+  const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [copied, setCopied] = useState(false);
 
+  const selectedFile = dynamicFiles[selectedFileIndex] || dynamicFiles[0];
+
   const [chatMessages, setChatMessages] = useState([
-    { sender: 'Product Manager', text: 'Hello! I have created the PRD and user stories for your Expense Tracker App.' },
+    { sender: 'Product Manager', text: `Hello! I have created the PRD and requirements for ${projectName}.` },
     { sender: 'Architect', text: 'The system architecture diagram is ready under the Architecture tab.' },
   ]);
   const [inputMsg, setInputMsg] = useState('');
@@ -126,7 +132,7 @@ export default function ProjectWorkspace() {
     setTimeout(() => {
       setChatMessages((prev) => [
         ...prev,
-        { sender: 'Architect', text: `Got it! I will update the specification regarding "${currentInput}".` },
+        { sender: 'Architect', text: `Got it! Updating specifications for "${currentInput}".` },
       ]);
     }, 1000);
   };
@@ -140,8 +146,8 @@ export default function ProjectWorkspace() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Expense Tracker App Workspace</h1>
-            <p className="text-xs text-muted-foreground">Project ID: {id} · Multi-Agent Interactive Workspace</p>
+            <h1 className="text-xl font-bold tracking-tight">{projectName} Workspace</h1>
+            <p className="text-xs text-muted-foreground">Project ID: {id} · Tech Stack: {projectTech} ({projectLang})</p>
           </div>
         </div>
 
@@ -182,12 +188,12 @@ export default function ProjectWorkspace() {
             <div className="w-64 border-r border-border/50 bg-background/40 p-3 overflow-y-auto shrink-0">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Project Files</p>
               <div className="space-y-1">
-                {mockFiles.map((file) => {
-                  const isSelected = selectedFile.path === file.path;
+                {dynamicFiles.map((file, idx) => {
+                  const isSelected = selectedFileIndex === idx;
                   return (
                     <button
                       key={file.path}
-                      onClick={() => setSelectedFile(file)}
+                      onClick={() => setSelectedFileIndex(idx)}
                       className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-mono text-left transition-colors ${
                         isSelected ? 'bg-primary/15 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent'
                       }`}
@@ -284,19 +290,18 @@ export default function ProjectWorkspace() {
         {/* TAB 4: ARCHITECTURE */}
         {activeTab === 'architecture' && (
           <div className="p-6 w-full overflow-y-auto space-y-6">
-            <h2 className="text-lg font-bold">System Architecture Specification</h2>
+            <h2 className="text-lg font-bold">System Architecture Specification — {projectName}</h2>
             <div className="rounded-xl border border-border/50 bg-accent/20 p-4 font-mono text-xs space-y-2">
-              <p className="font-semibold text-primary">System Type: Fullstack React + FastAPI</p>
-              <p className="text-muted-foreground">Database: PostgreSQL 15 | Task Queue: Celery + Redis</p>
+              <p className="font-semibold text-primary">System Type: {projectTech} ({projectLang})</p>
+              <p className="text-muted-foreground">Database: SQLite / PostgreSQL | Multi-Agent Execution Engine</p>
             </div>
 
             <div className="rounded-2xl border border-border/50 p-6 bg-slate-950 text-emerald-400 font-mono text-xs">
-              <p className="text-slate-500 mb-2">// Mermaid Architecture ER Diagram</p>
+              <p className="text-slate-500 mb-2">// Architecture ER Diagram</p>
               <pre>{`graph TD;
-  UI[React 19 Frontend] --> API[FastAPI Async Backend];
-  API --> DB[(PostgreSQL)];
-  API --> Redis[(Redis Cache & Queue)];
-  API --> Qdrant[(Qdrant Vector DB)];`}</pre>
+  UI[React 19 Frontend (${projectName})] --> API[FastAPI Backend];
+  API --> DB[(SQLite Database)];
+  API --> AI[DevForge Multi-Agent Team];`}</pre>
             </div>
           </div>
         )}
@@ -304,7 +309,7 @@ export default function ProjectWorkspace() {
         {/* TAB 5: TASKS */}
         {activeTab === 'tasks' && (
           <div className="p-6 w-full overflow-y-auto space-y-4">
-            <h2 className="text-lg font-bold">Sprint Task Kanban</h2>
+            <h2 className="text-lg font-bold">Sprint Task Kanban — {projectName}</h2>
             <div className="grid gap-3 sm:grid-cols-3">
               {[
                 { title: 'Requirements & PRD', status: 'Completed', agent: 'Product Manager' },
@@ -312,7 +317,7 @@ export default function ProjectWorkspace() {
                 { title: 'Backend API Implementation', status: 'In Progress', agent: 'Backend Dev' },
                 { title: 'Frontend UI Components', status: 'In Progress', agent: 'Frontend Dev' },
                 { title: 'Security Audit & OWASP Scan', status: 'Pending', agent: 'Security Analyst' },
-                { title: 'Docker Compose & CI/CD', status: 'Pending', agent: 'DevOps' },
+                { title: 'Docker Setup & Deployment', status: 'Pending', agent: 'DevOps' },
               ].map((t) => (
                 <div key={t.title} className="rounded-xl border border-border/50 p-4 bg-card/60 space-y-2">
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-primary/10 text-primary">{t.status}</span>
@@ -327,13 +332,13 @@ export default function ProjectWorkspace() {
         {/* TAB 6: TERMINAL */}
         {activeTab === 'terminal' && (
           <div className="w-full h-full p-4 bg-slate-950 font-mono text-xs text-emerald-400 overflow-y-auto leading-relaxed">
-            <p className="text-slate-500">$ docker-compose up --build</p>
-            <p>[+] Building 2/2</p>
-            <p> ✔ Container devforge-postgres Healthy</p>
-            <p> ✔ Container devforge-redis Healthy</p>
-            <p> ✔ Container devforge-backend Started (Port 8000)</p>
-            <p> ✔ Container devforge-frontend Started (Port 3000)</p>
-            <p className="text-purple-400 mt-2">INFO:     Application startup complete. Ready to handle requests.</p>
+            <p className="text-slate-500">$ devforge build --project "{projectName}"</p>
+            <p>[+] Building project {id}</p>
+            <p> ✔ Agent Product Manager: PRD generated</p>
+            <p> ✔ Agent Architect: Schema & API specification compiled</p>
+            <p> ✔ Agent Backend Developer: Endpoints generated</p>
+            <p> ✔ Agent Frontend Developer: UI components generated</p>
+            <p className="text-purple-400 mt-2">INFO: Application build complete for {projectName}.</p>
           </div>
         )}
       </div>

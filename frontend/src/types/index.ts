@@ -44,10 +44,14 @@ export type ProjectStatus =
   | 'failed';
 
 export interface ProjectConfig {
-  targetUsers: string;
-  techPreference: string;
-  programmingLanguage: string[];
-  deploymentTarget: string;
+  targetUsers?: string;
+  techPreference?: string;
+  techStack?: string;
+  language?: string;
+  programmingLanguage?: string[];
+  deploymentTarget?: string;
+  deployTarget?: string;
+  [key: string]: any;
 }
 
 export interface Project {
