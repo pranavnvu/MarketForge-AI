@@ -39,6 +39,12 @@ export default function ProjectDetail() {
           <p className="text-sm text-muted-foreground">Project ID: {id}</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            to={`${ROUTES.PROJECTS}/${id}/workspace`}
+            className="inline-flex items-center gap-2 rounded-xl bg-purple-500/10 border border-purple-500/30 px-3 py-2 text-sm font-semibold text-purple-400 hover:bg-purple-500/20 transition-colors"
+          >
+            Open Workspace
+          </Link>
           <button className="inline-flex items-center gap-2 rounded-xl border border-border/50 px-3 py-2 text-sm hover:bg-accent transition-colors">
             <GitBranch className="h-4 w-4" />
             Push to GitHub

@@ -15,6 +15,7 @@ const VerifyEmail = lazy(() => import('@/pages/auth/VerifyEmail'));
 const Dashboard = lazy(() => import('@/pages/dashboard/Dashboard'));
 const Projects = lazy(() => import('@/pages/dashboard/Projects'));
 const ProjectDetail = lazy(() => import('@/pages/dashboard/ProjectDetail'));
+const ProjectWorkspace = lazy(() => import('@/pages/dashboard/ProjectWorkspace'));
 const Agents = lazy(() => import('@/pages/dashboard/Agents'));
 const History = lazy(() => import('@/pages/dashboard/History'));
 const ApiKeys = lazy(() => import('@/pages/dashboard/ApiKeys'));
@@ -162,6 +163,14 @@ export const router = createBrowserRouter([
             element: (
               <SuspenseWrapper>
                 <ProjectDetail />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: '/dashboard/projects/:id/workspace',
+            element: (
+              <SuspenseWrapper>
+                <ProjectWorkspace />
               </SuspenseWrapper>
             ),
           },
