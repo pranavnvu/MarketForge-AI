@@ -5,11 +5,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, FolderKanban, Bot, Plus, Key, CreditCard, Settings, X } from 'lucide-react';
+import { Search, FolderKanban, Bot, Plus, Key, CreditCard, Settings, X, FileCode } from 'lucide-react';
 import { useUIStore } from '@/stores/ui-store';
 import { ROUTES } from '@/lib/constants';
+import { useProjects } from '@/hooks/use-projects';
 
-const commands = [
+const baseCommands = [
   { label: 'New Project', path: ROUTES.NEW_PROJECT, icon: Plus, category: 'Actions' },
   { label: 'Go to Dashboard', path: ROUTES.DASHBOARD, icon: FolderKanban, category: 'Navigation' },
   { label: 'Go to Projects', path: ROUTES.PROJECTS, icon: FolderKanban, category: 'Navigation' },
@@ -21,8 +22,30 @@ const commands = [
 
 export function CommandPalette() {
   const { isCommandPaletteOpen, setCommandPaletteOpen } = useUIStore();
+  const { data: dbProjects = [] } = useProjects();
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
+
+  // Read deleted project IDs from localStorage
+  const deletedIds = (() => {
+    try {
+      const saved = localStorage.getItem('devforge_deleted_project_ids');
+      return saved ? (JSON.parse(saved) as string[]) : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const projectCommands = dbProjects
+    .filter((p) => !deletedIds.includes(p.id))
+    .map((p) => ({
+      label: `Open Workspace: ${p.name}`,
+      path: `/dashboard/projects/${p.id}/workspace`,
+      icon: FileCode,
+      category: 'Projects',
+    }));
+
+  const allCommands = [...projectCommands, ...baseCommands];
 
   // Cmd+K shortcut listener
   useEffect(() => {
@@ -39,9 +62,12 @@ export function CommandPalette() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCommandPaletteOpen, setCommandPaletteOpen]);
 
-  const filteredCommands = commands.filter((cmd) =>
-    cmd.label.toLowerCase().includes(query.toLowerCase())
-  );
+  const filteredCommands = allCommands.filter((cmd) => {
+    if (!query.trim()) return true;
+    const normQuery = query.toLowerCase().replace(/[\s_]+/g, ' ');
+    const normLabel = cmd.label.toLowerCase().replace(/[\s_]+/g, ' ');
+    return normLabel.includes(normQuery);
+  });
 
   const handleSelect = (path: string) => {
     navigate(path);
@@ -68,7 +94,7 @@ export function CommandPalette() {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Type a command or search..."
+              placeholder="Search projects or type a command..."
               className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-500 focus:outline-none"
             />
             <button
@@ -82,7 +108,7 @@ export function CommandPalette() {
           {/* Results List */}
           <div className="p-2 max-h-80 overflow-y-auto space-y-1">
             {filteredCommands.length === 0 ? (
-              <p className="p-4 text-center text-xs text-slate-500">No matching commands found.</p>
+              <p className="p-4 text-center text-xs text-slate-500">No matching projects or commands found.</p>
             ) : (
               filteredCommands.map((cmd) => {
                 const Icon = cmd.icon;
