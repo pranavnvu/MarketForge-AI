@@ -22,18 +22,31 @@ const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; la
 };
 
 // ---- Helpers ----
-function getAgentCount(status: ProjectStatus): number {
-  const agentTotal = Object.keys(AGENT_CONFIG).length;
-  switch (status) {
-    case 'draft': return 1;
-    case 'planning': return 3;
-    case 'in_progress': return agentTotal;
-    case 'testing': return 6;
-    case 'review': return 4;
-    case 'completed': return agentTotal;
-    case 'failed': return agentTotal;
-    default: return 0;
+// Count agents assigned to each project using the same round-robin logic as the Agents page
+function getAgentCountsPerProject(projects: Project[]): Record<string, number> {
+  const allAgentKeys = Object.keys(AGENT_CONFIG);
+  const counts: Record<string, number> = {};
+
+  // Initialize all projects to 0
+  for (const p of projects) {
+    counts[p.id] = 0;
   }
+
+  if (projects.length === 0) return counts;
+
+  for (let i = 0; i < allAgentKeys.length; i++) {
+    // Primary project via round-robin
+    const primaryIdx = i % projects.length;
+    counts[projects[primaryIdx].id] = (counts[projects[primaryIdx].id] || 0) + 1;
+
+    // Some agents also work on a second project
+    if (projects.length > 1 && i % 3 === 0) {
+      const secondIdx = (primaryIdx + 1) % projects.length;
+      counts[projects[secondIdx].id] = (counts[projects[secondIdx].id] || 0) + 1;
+    }
+  }
+
+  return counts;
 }
 
 function estimateFileCount(project: Project): number {
@@ -137,6 +150,11 @@ export default function History() {
     return counts;
   }, [allProjects]);
 
+  // Compute per-project agent counts using the same round-robin distribution as the Agents page
+  const agentCounts = useMemo(() => {
+    return getAgentCountsPerProject(allProjects);
+  }, [allProjects]);
+
   const isDeleted = (id: string) => deletedIds.includes(id);
 
   return (
@@ -232,7 +250,7 @@ export default function History() {
             {filteredProjects.map((project, i) => {
               const config = statusConfig[project.status] || statusConfig.draft;
               const Icon = config.icon;
-              const agentCount = getAgentCount(project.status);
+              const agentCount = agentCounts[project.id] || 0;
               const fileCount = estimateFileCount(project);
               const duration = estimateDuration(project);
               const deleted = isDeleted(project.id);
