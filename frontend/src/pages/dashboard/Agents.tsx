@@ -11,7 +11,7 @@ import type { AgentType } from '@/types';
 
 type AgentStatus = 'running' | 'idle' | 'completed';
 
-// Simulate which agents are actively working based on real projects
+// Distribute agents across all active projects
 function useAgentStatuses() {
   const { data: dbProjects = [] } = useProjects();
 
@@ -27,38 +27,38 @@ function useAgentStatuses() {
   const activeProjects = dbProjects.filter((p) => !deletedIds.includes(p.id));
   const hasProjects = activeProjects.length > 0;
 
-  // Agents that run during active project phases
-  const planningAgents: AgentType[] = ['product_manager', 'architect', 'planner'];
-  const buildAgents: AgentType[] = ['backend_dev', 'frontend_dev'];
-  const reviewAgents: AgentType[] = ['qa_engineer', 'security_analyst', 'code_reviewer', 'documentation', 'devops'];
-
-  const statuses: Record<string, { status: AgentStatus; tasks: number; project?: string }> = {};
+  const statuses: Record<string, { status: AgentStatus; tasks: number; projects: string[] }> = {};
 
   const allAgentKeys = Object.keys(AGENT_CONFIG) as AgentType[];
 
-  for (const key of allAgentKeys) {
+  // Each agent is assigned to projects in round-robin so they spread evenly
+  for (let i = 0; i < allAgentKeys.length; i++) {
+    const key = allAgentKeys[i];
     if (!hasProjects) {
-      statuses[key] = { status: 'idle', tasks: 0 };
+      statuses[key] = { status: 'idle', tasks: 0, projects: [] };
       continue;
     }
 
-    // Assign agents to projects based on project status
-    const planningProjects = activeProjects.filter((p) => p.status === 'planning' || p.status === 'draft');
-    const inProgressProjects = activeProjects.filter((p) => p.status === 'in_progress');
-    const completedProjects = activeProjects.filter((p) => p.status === 'completed');
+    // Pick a primary project via round-robin
+    const primaryIdx = i % activeProjects.length;
+    const primaryProject = activeProjects[primaryIdx];
 
-    if (planningAgents.includes(key) && planningProjects.length > 0) {
-      statuses[key] = { status: 'running', tasks: planningProjects.length, project: planningProjects[0].name };
-    } else if (buildAgents.includes(key) && (planningProjects.length > 0 || inProgressProjects.length > 0)) {
-      const proj = inProgressProjects[0] || planningProjects[0];
-      statuses[key] = { status: 'running', tasks: (planningProjects.length + inProgressProjects.length), project: proj.name };
-    } else if (reviewAgents.includes(key) && inProgressProjects.length > 0) {
-      statuses[key] = { status: 'running', tasks: inProgressProjects.length, project: inProgressProjects[0].name };
-    } else if (completedProjects.length > 0) {
-      statuses[key] = { status: 'completed', tasks: completedProjects.length * 3, project: completedProjects[0].name };
-    } else {
-      statuses[key] = { status: 'running', tasks: activeProjects.length, project: activeProjects[0].name };
+    // Some agents work across multiple projects
+    const assignedProjects: string[] = [primaryProject.name];
+    // If there are more projects, give some agents a second assignment
+    if (activeProjects.length > 1 && i % 3 === 0) {
+      const secondIdx = (primaryIdx + 1) % activeProjects.length;
+      assignedProjects.push(activeProjects[secondIdx].name);
     }
+
+    const completedProjects = activeProjects.filter((p) => p.status === 'completed');
+    const isCompleted = completedProjects.some((p) => p.name === primaryProject.name);
+
+    statuses[key] = {
+      status: isCompleted ? 'completed' : 'running',
+      tasks: assignedProjects.length,
+      projects: assignedProjects,
+    };
   }
 
   return { statuses, totalProjects: activeProjects.length };
@@ -196,9 +196,13 @@ export default function Agents() {
                   </span>
                 </div>
 
-                {agent.project && (
-                  <div className="rounded-lg bg-accent/40 px-3 py-1.5 text-xs text-muted-foreground">
-                    📂 Working on: <span className="font-medium text-foreground">{agent.project}</span>
+                {agent.projects && agent.projects.length > 0 && (
+                  <div className="rounded-lg bg-accent/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
+                    {agent.projects.map((projName) => (
+                      <div key={projName}>
+                        📂 Working on: <span className="font-medium text-foreground">{projName}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
