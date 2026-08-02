@@ -1,0 +1,38 @@
+# Development overrides for Docker Compose
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: "3.8"
+
+services:
+  backend:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
+    environment:
+      - DEBUG=true
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    command: npm run dev -- --host 0.0.0.0 --port 3000
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+  celery_worker:
+    command: celery -A app.worker worker -Q default,agent_queue --loglevel=debug --concurrency=2
+    volumes:
+      - ./backend:/app
+
+  # Disable production-only services in dev
+  nginx:
+    profiles:
+      - production
+
+  prometheus:
+    profiles:
+      - monitoring
+
+  grafana:
+    profiles:
+      - monitoring

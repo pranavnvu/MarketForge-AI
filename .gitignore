@@ -1,0 +1,95 @@
+# ============================
+# Dependencies
+# ============================
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# ============================
+# Environment
+# ============================
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ============================
+# IDE & Editor
+# ============================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ============================
+# Python
+# ============================
+venv/
+.venv/
+env/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ============================
+# Node.js / Frontend
+# ============================
+node_modules/
+.next/
+out/
+.nuxt/
+*.tsbuildinfo
+
+# ============================
+# Docker
+# ============================
+docker-compose.override.yml
+
+# ============================
+# Logs
+# ============================
+*.log
+logs/
+
+# ============================
+# Database
+# ============================
+*.sqlite3
+*.db
+
+# ============================
+# Generated
+# ============================
+generated_code/
+temp/
+tmp/
+
+# ============================
+# SSL Certificates
+# ============================
+infrastructure/docker/ssl/*.pem
+infrastructure/docker/ssl/*.key
+infrastructure/docker/ssl/*.crt
+
+# ============================
+# OS
+# ============================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db

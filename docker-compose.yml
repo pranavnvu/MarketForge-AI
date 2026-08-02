@@ -1,0 +1,270 @@
+version: "3.8"
+
+services:
+  # ============================================
+  # DATABASE - PostgreSQL 16
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: devforge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: devforge
+      POSTGRES_USER: devforge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devforge_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devforge -d devforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devforge-network
+
+  # ============================================
+  # CACHE & MESSAGE BROKER - Redis 7
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: devforge-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devforge-network
+
+  # ============================================
+  # VECTOR DATABASE - Qdrant
+  # ============================================
+  qdrant:
+    image: qdrant/qdrant:v1.9.0
+    container_name: devforge-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    networks:
+      - devforge-network
+
+  # ============================================
+  # BACKEND API - FastAPI
+  # ============================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: devforge-backend
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level info
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_cache:/root/.cache
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://devforge:${POSTGRES_PASSWORD:-devforge_secret}@postgres:5432/devforge
+      - REDIS_URL=redis://redis:6379/0
+      - QDRANT_URL=http://qdrant:6333
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    networks:
+      - devforge-network
+
+  # ============================================
+  # CELERY WORKER - Background Tasks
+  # ============================================
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: devforge-celery-worker
+    restart: unless-stopped
+    command: celery -A app.worker worker -Q default,agent_queue --loglevel=info --concurrency=4
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://devforge:${POSTGRES_PASSWORD:-devforge_secret}@postgres:5432/devforge
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - QDRANT_URL=http://qdrant:6333
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - devforge-network
+
+  # ============================================
+  # CELERY BEAT - Periodic Tasks
+  # ============================================
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: devforge-celery-beat
+    restart: unless-stopped
+    command: celery -A app.worker beat --loglevel=info
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - devforge-network
+
+  # ============================================
+  # CELERY FLOWER - Task Monitoring
+  # ============================================
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: devforge-flower
+    restart: unless-stopped
+    command: celery -A app.worker flower --port=5555
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - devforge-network
+
+  # ============================================
+  # FRONTEND - React (Vite)
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: devforge-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
+      - VITE_WS_URL=ws://localhost:8000/ws
+    depends_on:
+      - backend
+    networks:
+      - devforge-network
+
+  # ============================================
+  # REVERSE PROXY - Nginx
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: devforge-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/docker/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - devforge-network
+
+  # ============================================
+  # MONITORING - Prometheus
+  # ============================================
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: devforge-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - devforge-network
+
+  # ============================================
+  # MONITORING - Grafana
+  # ============================================
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: devforge-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - devforge-network
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  qdrant_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  backend_cache:
+    driver: local
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  devforge-network:
+    driver: bridge
+    name: devforge-network
