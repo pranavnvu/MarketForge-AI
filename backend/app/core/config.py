@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     
     CORS_ORIGINS: List[str] = ["*"]
     
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_file=("../.env", ".env"), case_sensitive=True, extra="ignore"
+    )
 
 settings = Settings()

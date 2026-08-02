@@ -2,17 +2,28 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.core.database import sessionmanager
+from app.core.database import sessionmanager, Base
 from app.core.redis import init_redis, close_redis
 from app.core.exceptions import setup_exception_handlers
 from app.api.v1 import api_v1_router
 from app.middleware.logging import RequestLoggingMiddleware
 
+# Import models to ensure they register on Base.metadata
+import app.models.user  # noqa
+import app.models.auth  # noqa
+import app.models.project  # noqa
+import app.models.file  # noqa
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize resources
+    # Initialize resources & create database tables automatically
     await init_redis()
+    try:
+        async with sessionmanager.connect() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        print(f"Database initialization warning: {e}")
     yield
     # Cleanup resources
     await close_redis()

@@ -27,28 +27,8 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: async (data: LoginRequest) => {
-      try {
-        const response = await apiClient.post<AuthResponse>('/auth/login', data);
-        return response.data;
-      } catch (err: any) {
-        // Fallback for dev mode when backend DB is not connected
-        const mockUser: User = {
-          id: 'usr-1',
-          email: data.email,
-          name: data.email.split('@')[0] || 'Developer',
-          avatar: null,
-          role: 'user',
-          isVerified: true,
-          oauthProvider: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        return {
-          user: mockUser,
-          accessToken: 'mock_access_token',
-          refreshToken: 'mock_refresh_token',
-        };
-      }
+      const response = await apiClient.post<AuthResponse>('/auth/login', data);
+      return response.data;
     },
     onSuccess: (data) => {
       setAuth(data.user, data.accessToken, data.refreshToken);
@@ -64,36 +44,12 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: async (data: RegisterRequest) => {
-      try {
-        const response = await apiClient.post('/auth/register', data);
-        return response.data;
-      } catch (err: any) {
-        // Fallback for dev mode when backend DB is not connected
-        const mockUser: User = {
-          id: 'usr-' + Date.now(),
-          email: data.email,
-          name: data.name,
-          avatar: null,
-          role: 'user',
-          isVerified: true,
-          oauthProvider: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        return {
-          user: mockUser,
-          accessToken: 'mock_access_token',
-          refreshToken: 'mock_refresh_token',
-        };
-      }
+      const response = await apiClient.post<AuthResponse>('/auth/register', data);
+      return response.data;
     },
-    onSuccess: (data: any) => {
-      if (data?.user) {
-        setAuth(data.user, data.accessToken, data.refreshToken);
-        navigate(ROUTES.DASHBOARD);
-      } else {
-        navigate(ROUTES.VERIFY_EMAIL);
-      }
+    onSuccess: (data) => {
+      setAuth(data.user, data.accessToken, data.refreshToken);
+      navigate(ROUTES.DASHBOARD);
     },
   });
 }
@@ -155,12 +111,8 @@ export function useResetPassword() {
 
   return useMutation({
     mutationFn: async (data: { token: string; password: string }) => {
-      try {
-        const response = await apiClient.post('/auth/reset-password', data);
-        return response.data;
-      } catch (err) {
-        return { message: 'Password updated successfully' };
-      }
+      const response = await apiClient.post('/auth/reset-password', data);
+      return response.data;
     },
     onSuccess: () => {
       navigate(ROUTES.LOGIN);

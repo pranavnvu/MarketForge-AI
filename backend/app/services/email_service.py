@@ -15,6 +15,8 @@ class EmailService:
         reset_link = f"http://localhost:3000/reset-password?token={reset_token}"
         subject = "Reset Your DevForge AI Password"
 
+        logger.info("attempting_email_delivery", to=to_email, link=reset_link)
+
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -25,7 +27,7 @@ class EmailService:
             .logo {{ font-size: 24px; font-weight: bold; color: #c084fc; text-align: center; margin-bottom: 24px; }}
             h2 {{ color: #ffffff; font-size: 20px; margin-top: 0; }}
             p {{ color: #94a3b8; line-height: 1.6; font-size: 14px; }}
-            .btn {{ display: inline-block; background: linear-gradient(135deg, #a855f7 0%, #06b6d4 100%); color: #ffffff !important; padding: 12px 28px; border-radius: 12px; font-weight: 600; text-decoration: none; margin: 20px 0; shadow: 0 4px 12px rgba(168,85,247,0.3); }}
+            .btn {{ display: inline-block; background: linear-gradient(135deg, #a855f7 0%, #06b6d4 100%); color: #ffffff !important; padding: 12px 28px; border-radius: 12px; font-weight: 600; text-decoration: none; margin: 20px 0; }}
             .footer {{ margin-top: 32px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px; }}
           </style>
         </head>
@@ -40,7 +42,7 @@ class EmailService:
             </div>
             <p>Or copy and paste this URL into your web browser:</p>
             <p style="word-break: break-all; color: #38bdf8; font-size: 12px;">{reset_link}</p>
-            <p>This password reset link will expire in 2 hours. If you did not request a password reset, you can safely ignore this email.</p>
+            <p>This password reset link will expire in 2 hours.</p>
             <div class="footer">
               &copy; 2026 DevForge AI — Autonomous Multi-Agent Platform
             </div>
@@ -49,14 +51,15 @@ class EmailService:
         </html>
         """
 
-        # 1. Try Resend HTTP API if SMTP password is a Resend Key or API Key
-        if settings.SMTP_PASSWORD and settings.SMTP_PASSWORD.startswith("re_"):
+        # Resend API Key check
+        resend_key = getattr(settings, "RESEND_API_KEY", "") or settings.SMTP_PASSWORD
+        if resend_key and resend_key.startswith("re_"):
             try:
                 async with httpx.AsyncClient() as client:
                     res = await client.post(
                         "https://api.resend.com/emails",
                         headers={
-                            "Authorization": f"Bearer {settings.SMTP_PASSWORD}",
+                            "Authorization": f"Bearer {resend_key}",
                             "Content-Type": "application/json",
                         },
                         json={
@@ -68,15 +71,15 @@ class EmailService:
                         timeout=10.0,
                     )
                     if res.status_code in (200, 201):
-                        logger.info("email_sent_via_resend_api", to=to_email)
+                        logger.info("email_sent_successfully_via_resend", to=to_email)
                         return True
                     else:
-                        logger.warning("resend_api_failed", status=res.status_code, body=res.text)
+                        logger.error("resend_api_error_response", status=res.status_code, body=res.text)
             except Exception as e:
                 logger.error("resend_api_exception", error=str(e))
 
-        # 2. Try Standard SMTP Server
-        if settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASSWORD:
+        # Standard SMTP Check
+        if settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASSWORD and "your-app-password" not in settings.SMTP_PASSWORD:
             try:
                 msg = MIMEMultipart("alternative")
                 msg["Subject"] = subject
@@ -88,11 +91,11 @@ class EmailService:
                     server.starttls()
                     server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
                     server.sendmail(msg["From"], [to_email], msg.as_string())
-                
-                logger.info("email_sent_via_smtp", to=to_email)
+
+                logger.info("email_sent_successfully_via_smtp", to=to_email)
                 return True
             except Exception as e:
-                logger.error("smtp_email_send_error", error=str(e))
+                logger.error("smtp_error", error=str(e))
 
-        logger.warning("no_email_provider_configured", to=to_email, link=reset_link)
+        logger.error("email_sending_failed_missing_api_key", note="Please set a valid Resend API Key (re_...) in .env under SMTP_PASSWORD=re_...")
         return False

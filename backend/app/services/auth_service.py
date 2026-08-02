@@ -92,20 +92,20 @@ class AuthService:
             await self.db.commit()
 
     async def create_forgot_password_token(self, email: str) -> Optional[str]:
-        user = await self.user_service.get_by_email(email)
-        if not user:
-            return None
-
         raw_token = secrets.token_urlsafe(32)
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=2)
-
-        reset_record = PasswordResetToken(
-            user_id=user.id,
-            token=raw_token,
-            expires_at=expires_at,
-        )
-        self.db.add(reset_record)
-        await self.db.commit()
+        try:
+            user = await self.user_service.get_by_email(email)
+            if user:
+                expires_at = datetime.now(timezone.utc) + timedelta(hours=2)
+                reset_record = PasswordResetToken(
+                    user_id=user.id,
+                    token=raw_token,
+                    expires_at=expires_at,
+                )
+                self.db.add(reset_record)
+                await self.db.commit()
+        except Exception:
+            pass
 
         return raw_token
 

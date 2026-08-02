@@ -34,7 +34,8 @@ export default function Login() {
       {/* Error alert */}
       {loginMutation.isError && (
         <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
-          {(loginMutation.error as any)?.response?.data?.message ||
+          {(loginMutation.error as any)?.response?.data?.detail ||
+            (loginMutation.error as any)?.response?.data?.message ||
             'Invalid email or password. Please try again.'}
         </div>
       )}
