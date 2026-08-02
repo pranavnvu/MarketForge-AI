@@ -5,17 +5,23 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, Github } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Github, Loader2 } from 'lucide-react';
+import { useLogin } from '@/hooks/use-auth';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const loginMutation = useLogin();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Will connect to auth hook in Phase 2
-    console.log('Login:', { email, password });
+    loginMutation.mutate({ email, password });
+  };
+
+  const handleOAuthLogin = (provider: 'google' | 'github') => {
+    window.location.href = `http://localhost:8000/api/v1/auth/${provider}`;
   };
 
   return (
@@ -25,9 +31,21 @@ export default function Login() {
         <p className="mt-1 text-sm text-slate-400">Sign in to your account to continue</p>
       </div>
 
+      {/* Error alert */}
+      {loginMutation.isError && (
+        <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+          {(loginMutation.error as any)?.response?.data?.message ||
+            'Invalid email or password. Please try again.'}
+        </div>
+      )}
+
       {/* OAuth Buttons */}
       <div className="space-y-3">
-        <button className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors">
+        <button
+          type="button"
+          onClick={() => handleOAuthLogin('google')}
+          className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors"
+        >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -37,7 +55,11 @@ export default function Login() {
           Continue with Google
         </button>
 
-        <button className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors">
+        <button
+          type="button"
+          onClick={() => handleOAuthLogin('github')}
+          className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors"
+        >
           <Github className="h-5 w-5" />
           Continue with GitHub
         </button>
@@ -97,9 +119,17 @@ export default function Login() {
         <motion.button
           whileTap={{ scale: 0.98 }}
           type="submit"
-          className="w-full rounded-xl bg-gradient-to-r from-purple-500 to-cyan-500 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-shadow"
+          disabled={loginMutation.isPending}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-cyan-500 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-shadow disabled:opacity-50"
         >
-          Sign In
+          {loginMutation.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Signing in...
+            </>
+          ) : (
+            'Sign In'
+          )}
         </motion.button>
       </form>
 

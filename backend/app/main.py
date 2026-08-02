@@ -5,8 +5,9 @@ from app.core.config import settings
 from app.core.database import sessionmanager
 from app.core.redis import init_redis, close_redis
 from app.core.exceptions import setup_exception_handlers
-from app.api.v1.health import router as health_router
+from app.api.v1 import api_v1_router
 from app.middleware.logging import RequestLoggingMiddleware
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -18,9 +19,10 @@ async def lifespan(app: FastAPI):
     if sessionmanager.engine is not None:
         await sessionmanager.engine.dispose()
 
+
 app = FastAPI(
-    title="DevForge AI API",
-    version="1.0.0",
+    title=settings.APP_NAME,
+    version=settings.VERSION,
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -42,5 +44,5 @@ app.add_middleware(RequestLoggingMiddleware)
 # Exception Handlers
 setup_exception_handlers(app)
 
-# Routers
-app.include_router(health_router, prefix=f"{settings.API_V1_PREFIX}/health", tags=["Health"])
+# Include API v1 router
+app.include_router(api_v1_router, prefix=settings.API_V1_PREFIX)
