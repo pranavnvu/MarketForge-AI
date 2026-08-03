@@ -1,8 +1,5 @@
-// ============================================
-// DevForge AI — Dashboard Layout
-// ============================================
-
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -21,12 +18,55 @@ import {
   LogOut,
   Menu,
   X,
+  CheckCheck,
+  Trash2,
 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { cleanImageUrl, isDirectImage } from '@/lib/avatar-helper';
 import { CommandPalette } from '@/components/CommandPalette';
 import { APP_NAME, ROUTES } from '@/lib/constants';
+
+// Notification items type
+type NotificationItem = {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+  type: 'agent' | 'security' | 'build' | 'system';
+  link?: string;
+};
+
+const initialNotifications: NotificationItem[] = [
+  {
+    id: 'n1',
+    title: 'Multi-Agent Pipeline Active',
+    message: 'Backend Dev & Architect agents generated core database schemas & API routes.',
+    time: '2 mins ago',
+    read: false,
+    type: 'agent',
+    link: ROUTES.PROJECTS,
+  },
+  {
+    id: 'n2',
+    title: 'Security Scan Passed',
+    message: 'OWASP scanner completed code vulnerability check with 0 critical alerts.',
+    time: '15 mins ago',
+    read: false,
+    type: 'security',
+    link: ROUTES.HISTORY,
+  },
+  {
+    id: 'n3',
+    title: 'Profile Settings Updated',
+    message: 'Your account credentials and avatar picture were synchronized cleanly.',
+    time: '1 hour ago',
+    read: false,
+    type: 'system',
+    link: ROUTES.SETTINGS,
+  },
+];
 
 // ---- Sidebar Navigation Items ----
 const sidebarItems = [
@@ -220,6 +260,49 @@ function TopBar() {
   const { theme, setTheme, setSidebarOpen, setCommandPaletteOpen } = useUIStore();
   const { user } = useAuthStore();
   const logout = useAuthStore((s) => s.logout);
+  const navigate = useNavigate();
+
+  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
+  const [showNotifPopover, setShowNotifPopover] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unread'>('all');
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  // Click outside to close notification popover
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifPopover(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const markAllAsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+  };
+
+  const toggleRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  };
+
+  const removeNotification = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const filteredNotifications = notifications.filter((n) => {
+    if (activeFilter === 'unread') return !n.read;
+    return true;
+  });
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/50 bg-background/80 px-4 backdrop-blur-xl">
@@ -250,15 +333,180 @@ function TopBar() {
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          title="Toggle Theme"
         >
           {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </button>
 
-        {/* Notifications */}
-        <button className="relative rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
-        </button>
+        {/* Notifications Bell & Popover Drawer */}
+        <div className="relative" ref={notifRef}>
+          <button
+            onClick={() => setShowNotifPopover(!showNotifPopover)}
+            className={`relative rounded-lg p-2 transition-colors ${
+              showNotifPopover
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}
+            title="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-extrabold text-white shadow-md animate-pulse">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Notifications Popover Dropdown */}
+          <AnimatePresence>
+            {showNotifPopover && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-border/60 bg-card/95 p-4 shadow-2xl backdrop-blur-2xl z-50 text-foreground"
+              >
+                {/* Popover Header */}
+                <div className="flex items-center justify-between border-b border-border/50 pb-3">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <span className="rounded-full bg-primary/10 border border-primary/30 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                        {unreadCount} unread
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 text-xs">
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllAsRead}
+                        className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors text-[11px] font-medium"
+                        title="Mark all as read"
+                      >
+                        <CheckCheck className="h-3.5 w-3.5" />
+                        Mark read
+                      </button>
+                    )}
+                    {notifications.length > 0 && (
+                      <button
+                        onClick={clearAllNotifications}
+                        className="flex items-center gap-1 text-muted-foreground hover:text-red-400 transition-colors text-[11px] font-medium ml-2"
+                        title="Clear all"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Filter Chips */}
+                <div className="flex items-center gap-2 pt-2.5 pb-1">
+                  <button
+                    onClick={() => setActiveFilter('all')}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                      activeFilter === 'all'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-accent/50 text-muted-foreground hover:bg-accent'
+                    }`}
+                  >
+                    All ({notifications.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveFilter('unread')}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                      activeFilter === 'unread'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-accent/50 text-muted-foreground hover:bg-accent'
+                    }`}
+                  >
+                    Unread ({unreadCount})
+                  </button>
+                </div>
+
+                {/* Notification Items List */}
+                <div className="mt-2 max-h-80 space-y-2 overflow-y-auto pr-1">
+                  {filteredNotifications.length > 0 ? (
+                    filteredNotifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        onClick={() => {
+                          toggleRead(notif.id);
+                          if (notif.link) {
+                            navigate(notif.link);
+                            setShowNotifPopover(false);
+                          }
+                        }}
+                        className={`group relative flex items-start gap-3 rounded-xl p-2.5 text-xs transition-all cursor-pointer border ${
+                          notif.read
+                            ? 'border-border/30 bg-accent/20 hover:bg-accent/40 text-muted-foreground'
+                            : 'border-primary/30 bg-primary/5 hover:bg-primary/10 text-foreground font-medium'
+                        }`}
+                      >
+                        {/* Type Icon Badge */}
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-background border border-border/50 text-sm shadow-xs mt-0.5">
+                          {notif.type === 'agent'
+                            ? '🤖'
+                            : notif.type === 'security'
+                            ? '🛡️'
+                            : notif.type === 'build'
+                            ? '🚀'
+                            : '⚡'}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 pr-4">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-semibold truncate text-foreground text-xs">
+                              {notif.title}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground shrink-0">{notif.time}</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
+                            {notif.message}
+                          </p>
+                        </div>
+
+                        {/* Unread Indicator & Delete Button */}
+                        <div className="flex items-center gap-1">
+                          {!notif.read && (
+                            <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                          )}
+                          <button
+                            onClick={(e) => removeNotification(notif.id, e)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-red-400 transition-all rounded-md hover:bg-accent"
+                            title="Remove notification"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-8 text-center text-xs text-muted-foreground space-y-1">
+                      <p className="font-semibold text-foreground">No notifications</p>
+                      <p className="text-[11px]">You're all caught up!</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="mt-3 border-t border-border/50 pt-2 text-center">
+                  <button
+                    onClick={() => {
+                      navigate(ROUTES.HISTORY);
+                      setShowNotifPopover(false);
+                    }}
+                    className="text-[11px] font-semibold text-primary hover:underline"
+                  >
+                    View all history & logs →
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* User Menu */}
         <div className="ml-2 flex items-center gap-3 border-l border-border/50 pl-4">
