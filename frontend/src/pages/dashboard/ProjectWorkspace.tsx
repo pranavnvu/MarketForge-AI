@@ -30,7 +30,11 @@ import {
   CheckCircle2,
   PlusCircle,
   ChevronRight,
+  ChevronDown,
   Filter,
+  Folder,
+  FolderOpen,
+  Search,
 } from 'lucide-react';
 import { ROUTES, AGENT_CONFIG } from '@/lib/constants';
 import { useProject, useUpdateProject } from '@/hooks/use-projects';
@@ -79,6 +83,147 @@ type TerminalHistoryItem = {
   output: string[];
   time: string;
 };
+
+type TreeNode = {
+  name: string;
+  fullPath: string;
+  isFolder: boolean;
+  fileIndex?: number;
+  children: TreeNode[];
+};
+
+function buildFileTree(files: WorkspaceFile[]): TreeNode[] {
+  const root: TreeNode[] = [];
+
+  files.forEach((file, index) => {
+    const parts = file.path.split('/');
+    let currentLevel = root;
+
+    parts.forEach((part, i) => {
+      const isLast = i === parts.length - 1;
+      const currentPath = parts.slice(0, i + 1).join('/');
+
+      let existingNode = currentLevel.find((node) => node.name === part);
+
+      if (!existingNode) {
+        existingNode = {
+          name: part,
+          fullPath: currentPath,
+          isFolder: !isLast,
+          fileIndex: isLast ? index : undefined,
+          children: [],
+        };
+        currentLevel.push(existingNode);
+      }
+
+      currentLevel = existingNode.children;
+    });
+  });
+
+  return root;
+}
+
+function RenderTreeNodes({
+  nodes,
+  depth = 0,
+  expandedFolders,
+  toggleFolder,
+  selectedFileIndex,
+  setSelectedFileIndex,
+  setIsEditingCode,
+  handleDeleteFile,
+}: {
+  nodes: TreeNode[];
+  depth?: number;
+  expandedFolders: Record<string, boolean>;
+  toggleFolder: (path: string) => void;
+  selectedFileIndex: number;
+  setSelectedFileIndex: (idx: number) => void;
+  setIsEditingCode: (v: boolean) => void;
+  handleDeleteFile: (idx: number, e: React.MouseEvent) => void;
+}) {
+  return (
+    <div className="space-y-0.5" style={{ paddingLeft: depth > 0 ? `${depth * 10}px` : '0px' }}>
+      {nodes.map((node) => {
+        if (node.isFolder) {
+          const isExpanded = expandedFolders[node.fullPath] !== false;
+          return (
+            <div key={node.fullPath} className="space-y-0.5">
+              <button
+                onClick={() => toggleFolder(node.fullPath)}
+                className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground transition-colors text-left"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                )}
+                {isExpanded ? (
+                  <FolderOpen className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
+                ) : (
+                  <Folder className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                )}
+                <span className="truncate">{node.name}</span>
+              </button>
+              {isExpanded && node.children.length > 0 && (
+                <RenderTreeNodes
+                  nodes={node.children}
+                  depth={depth + 1}
+                  expandedFolders={expandedFolders}
+                  toggleFolder={toggleFolder}
+                  selectedFileIndex={selectedFileIndex}
+                  setSelectedFileIndex={setSelectedFileIndex}
+                  setIsEditingCode={setIsEditingCode}
+                  handleDeleteFile={handleDeleteFile}
+                />
+              )}
+            </div>
+          );
+        }
+
+        const isSelected = selectedFileIndex === node.fileIndex;
+        return (
+          <div
+            key={node.fullPath}
+            onClick={() => {
+              if (node.fileIndex !== undefined) {
+                setSelectedFileIndex(node.fileIndex);
+                setIsEditingCode(false);
+              }
+            }}
+            className={`group flex items-center justify-between rounded-md px-2 py-1 text-xs font-mono transition-colors cursor-pointer ${
+              isSelected
+                ? 'bg-primary/15 text-primary font-semibold border border-primary/30'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <FileCode
+                className={`h-3.5 w-3.5 shrink-0 ${
+                  node.name.endsWith('.py')
+                    ? 'text-blue-400'
+                    : node.name.endsWith('.tsx') || node.name.endsWith('.ts')
+                    ? 'text-cyan-400'
+                    : 'text-amber-400'
+                }`}
+              />
+              <span className="truncate">{node.name}</span>
+            </div>
+            {node.fileIndex !== undefined && (
+              <button
+                onClick={(e) => handleDeleteFile(node.fileIndex!, e)}
+                className="opacity-0 group-hover:opacity-100 p-0.5 text-muted-foreground hover:text-red-400 transition-opacity rounded"
+                title="Delete file"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function ProjectWorkspace() {
   const { id } = useParams<{ id: string }>();
@@ -166,6 +311,42 @@ export default function ProjectWorkspace() {
   const [codeDraft, setCodeDraft] = useState('');
   const [showNewFileModal, setShowNewFileModal] = useState(false);
   const [newFilePath, setNewFilePath] = useState('');
+
+  // Tree building & searching state
+  const [fileSearchQuery, setFileSearchQuery] = useState('');
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+
+  const toggleFolder = (folderPath: string) => {
+    setExpandedFolders((prev) => ({
+      ...prev,
+      [folderPath]: prev[folderPath] === false ? true : false,
+    }));
+  };
+
+  const handleDeleteFile = (fileIndex: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const fileToDelete = files[fileIndex];
+    if (!fileToDelete) return;
+
+    if (files.length <= 1) {
+      showToast('Cannot delete the last remaining file');
+      return;
+    }
+
+    setFiles((prev) => prev.filter((_, i) => i !== fileIndex));
+    if (selectedFileIndex === fileIndex) {
+      setSelectedFileIndex(0);
+    } else if (selectedFileIndex > fileIndex) {
+      setSelectedFileIndex(selectedFileIndex - 1);
+    }
+    showToast(`Deleted ${fileToDelete.path}`);
+  };
+
+  const filteredFiles = files.filter((f) =>
+    f.path.toLowerCase().includes(fileSearchQuery.toLowerCase())
+  );
+
+  const fileTreeNodes = buildFileTree(filteredFiles);
 
   const currentFile = files[selectedFileIndex] || files[0];
 
@@ -542,36 +723,48 @@ export default function ProjectWorkspace() {
           <div className="flex w-full h-full">
             {/* File Tree Sidebar */}
             <div className="w-64 border-r border-border/50 bg-background/40 p-3 overflow-y-auto shrink-0 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Project Files</p>
+              <div className="space-y-3">
+                {/* Header & Quick Action Buttons */}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Folder className="h-3.5 w-3.5 text-primary" /> Explorer
+                  </p>
                   <button
                     onClick={() => setShowNewFileModal(true)}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                    className="inline-flex items-center gap-1 rounded-md bg-primary/10 border border-primary/30 px-2 py-0.5 text-[11px] font-semibold text-primary hover:bg-primary/20 transition-colors"
                     title="Add new file"
                   >
-                    <Plus className="h-3.5 w-3.5" /> New File
+                    <Plus className="h-3 w-3" /> New File
                   </button>
                 </div>
-                <div className="space-y-1">
-                  {files.map((file, idx) => {
-                    const isSelected = selectedFileIndex === idx;
-                    return (
-                      <button
-                        key={file.path}
-                        onClick={() => {
-                          setSelectedFileIndex(idx);
-                          setIsEditingCode(false);
-                        }}
-                        className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-mono text-left transition-colors ${
-                          isSelected ? 'bg-primary/15 text-primary font-semibold border border-primary/30' : 'text-muted-foreground hover:bg-accent'
-                        }`}
-                      >
-                        <FileCode className="h-4 w-4 shrink-0" />
-                        <span className="truncate">{file.path}</span>
-                      </button>
-                    );
-                  })}
+
+                {/* Search Filter Input */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={fileSearchQuery}
+                    onChange={(e) => setFileSearchQuery(e.target.value)}
+                    placeholder="Filter files..."
+                    className="w-full rounded-lg border border-border/50 bg-background pl-8 pr-2.5 py-1 text-xs focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                {/* Tree View */}
+                <div className="mt-2 space-y-1 overflow-y-auto max-h-[calc(100vh-16rem)] pr-1">
+                  {fileTreeNodes.length > 0 ? (
+                    <RenderTreeNodes
+                      nodes={fileTreeNodes}
+                      expandedFolders={expandedFolders}
+                      toggleFolder={toggleFolder}
+                      selectedFileIndex={selectedFileIndex}
+                      setSelectedFileIndex={setSelectedFileIndex}
+                      setIsEditingCode={setIsEditingCode}
+                      handleDeleteFile={handleDeleteFile}
+                    />
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-4 text-center">No matching files</p>
+                  )}
                 </div>
               </div>
 
