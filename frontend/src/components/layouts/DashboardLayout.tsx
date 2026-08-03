@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { cleanImageUrl, isDirectImage } from '@/lib/avatar-helper';
 import { CommandPalette } from '@/components/CommandPalette';
 import { APP_NAME, ROUTES } from '@/lib/constants';
 
@@ -266,14 +267,19 @@ function TopBar() {
             <p className="text-xs text-muted-foreground">{user?.email || 'user@example.com'}</p>
           </div>
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 text-sm font-bold text-white overflow-hidden shadow-sm border border-border/40">
-            {user?.avatar ? (
-              user.avatar.startsWith('http') || user.avatar.startsWith('data:') ? (
-                <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
-              ) : (
-                <span>{user.avatar}</span>
-              )
+            {user?.avatar && typeof user.avatar === 'string' && isDirectImage(user.avatar) ? (
+              <img
+                src={cleanImageUrl(user.avatar)}
+                alt={user?.name || 'User'}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+                className="h-full w-full object-cover"
+              />
+            ) : user?.avatar ? (
+              <span>{user.avatar}</span>
             ) : (
-              <span>{(user?.name?.[0] || 'U').toUpperCase()}</span>
+              <span>{(user?.name?.[0] || 'P').toUpperCase()}</span>
             )}
           </div>
           <button

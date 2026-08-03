@@ -29,6 +29,7 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import { useUpdateProfile, useChangePassword, useDeleteAccount } from '@/hooks/use-auth';
 import { useUIStore } from '@/stores/ui-store';
+import { cleanImageUrl, isDirectImage } from '@/lib/avatar-helper';
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: UserIcon },
@@ -109,10 +110,14 @@ export default function Settings() {
     }
   };
 
+  const [imgError, setImgError] = useState(false);
+
   const updateAvatar = (newAvatar: string) => {
-    setAvatarVal(newAvatar);
-    useAuthStore.getState().updateUser({ avatar: newAvatar });
-    updateProfile.mutate({ avatar: newAvatar });
+    const cleaned = cleanImageUrl(newAvatar);
+    setImgError(false);
+    setAvatarVal(cleaned);
+    useAuthStore.getState().updateUser({ avatar: cleaned });
+    updateProfile.mutate({ avatar: cleaned });
   };
 
   // Handle Local File Upload (converts image file to Data URL)
@@ -141,17 +146,14 @@ export default function Settings() {
     reader.readAsDataURL(file);
   };
 
-  // Handle External Picture URL
+  // Handle External Picture URL (unwraps Google redirect URLs)
   const handleApplyPictureUrl = (e?: React.SyntheticEvent) => {
     if (e) e.preventDefault();
-    let url = pictureUrlInput.trim();
-    if (!url) return;
+    const rawInput = pictureUrlInput.trim();
+    if (!rawInput) return;
 
-    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('data:')) {
-      url = 'https://' + url;
-    }
-
-    updateAvatar(url);
+    const cleanedUrl = cleanImageUrl(rawInput);
+    updateAvatar(cleanedUrl);
     setShowUrlInput(false);
     setPictureUrlInput('');
     showToast('Profile picture URL updated successfully!');
@@ -205,14 +207,7 @@ export default function Settings() {
     deleteAccount.mutate();
   };
 
-  const isImageAvatar = Boolean(
-    avatarVal &&
-      (avatarVal.startsWith('http://') ||
-        avatarVal.startsWith('https://') ||
-        avatarVal.startsWith('data:') ||
-        avatarVal.includes('/') ||
-        avatarVal.includes('.'))
-  );
+  const isImageAvatar = isDirectImage(avatarVal);
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -296,8 +291,16 @@ export default function Settings() {
                   title="Click to upload profile picture"
                 >
                   <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-600 to-cyan-500 text-3xl font-extrabold text-white shadow-lg shadow-purple-500/20 ring-4 ring-primary/20 overflow-hidden">
-                    {isImageAvatar ? (
-                      <img src={avatarVal} alt={name} className="h-full w-full object-cover" />
+                    {isImageAvatar && !imgError ? (
+                      <img
+                        src={cleanImageUrl(avatarVal)}
+                        alt={name}
+                        onError={() => {
+                          setImgError(true);
+                          showToast("Unable to load image file from URL. Make sure to right click the image directly & select 'Copy Image Address'.", true);
+                        }}
+                        className="h-full w-full object-cover"
+                      />
                     ) : avatarVal ? (
                       <span>{avatarVal}</span>
                     ) : (
