@@ -51,6 +51,7 @@ export interface ProjectConfig {
   programmingLanguage?: string[];
   deploymentTarget?: string;
   deployTarget?: string;
+  disabledAgents?: AgentType[];
   [key: string]: any;
 }
 

@@ -5,7 +5,7 @@
 import { AGENT_CONFIG } from '@/lib/constants';
 import type { AgentType, Project } from '@/types';
 
-export type SingleAgentStatus = 'running' | 'idle' | 'completed' | 'waiting';
+export type SingleAgentStatus = 'running' | 'idle' | 'completed' | 'waiting' | 'disabled';
 
 export interface ProjectAgentInfo {
   status: SingleAgentStatus;
@@ -14,17 +14,75 @@ export interface ProjectAgentInfo {
 }
 
 /**
+ * Retrieves the list of disabled agent keys for a project from project config & localStorage.
+ */
+export function getDisabledAgentsForProject(project: Project): AgentType[] {
+  const disabledSet = new Set<AgentType>();
+
+  // 1. Check project config
+  if (Array.isArray(project.config?.disabledAgents)) {
+    project.config.disabledAgents.forEach((a) => disabledSet.add(a as AgentType));
+  }
+
+  // 2. Check localStorage cache
+  try {
+    const saved = localStorage.getItem(`devforge_disabled_agents_${project.id}`);
+    if (saved) {
+      const parsed = JSON.parse(saved) as AgentType[];
+      parsed.forEach((a) => disabledSet.add(a));
+    }
+  } catch {
+    // Ignore JSON errors
+  }
+
+  return Array.from(disabledSet);
+}
+
+/**
+ * Toggles an agent enabled/disabled state for a specific project.
+ */
+export function toggleAgentForProject(project: Project, agentKey: AgentType, enabled: boolean): AgentType[] {
+  const currentDisabled = getDisabledAgentsForProject(project);
+  let newDisabled: AgentType[];
+
+  if (enabled) {
+    newDisabled = currentDisabled.filter((a) => a !== agentKey);
+  } else {
+    newDisabled = currentDisabled.includes(agentKey) ? currentDisabled : [...currentDisabled, agentKey];
+  }
+
+  try {
+    localStorage.setItem(`devforge_disabled_agents_${project.id}`, JSON.stringify(newDisabled));
+  } catch {
+    // Ignore localStorage errors
+  }
+
+  return newDisabled;
+}
+
+/**
  * Calculates exact agent status, progress percentage, and active task description
- * for a specific project based on its status and progress.
+ * for a specific project based on its status, progress, and enabled/disabled state.
  */
 export function getProjectAgentStatuses(project: Project): Record<AgentType, ProjectAgentInfo> {
   const status = project.status;
   const progress = project.progress ?? 0;
+  const disabledAgents = getDisabledAgentsForProject(project);
   const result: Partial<Record<AgentType, ProjectAgentInfo>> = {};
 
   const allAgentKeys = Object.keys(AGENT_CONFIG) as AgentType[];
 
   for (const key of allAgentKeys) {
+    // Agent disabled by user for this project
+    if (disabledAgents.includes(key)) {
+      result[key] = {
+        status: 'disabled',
+        progress: 0,
+        message: 'Disabled for this project by user',
+      };
+      continue;
+    }
+
     // Project fully completed
     if (status === 'completed' || progress >= 100) {
       result[key] = { status: 'completed', progress: 100, message: 'All tasks completed successfully' };

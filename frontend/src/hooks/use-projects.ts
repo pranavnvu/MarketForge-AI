@@ -71,6 +71,7 @@ export function useCreateProject() {
       techStack?: string;
       language?: string;
       deployTarget?: string;
+      disabledAgents?: string[];
     }) => {
       const response = await apiClient.post<Project>('/projects', {
         name: data.name,
@@ -80,6 +81,7 @@ export function useCreateProject() {
           techStack: data.techStack,
           language: data.language,
           deployTarget: data.deployTarget,
+          disabledAgents: data.disabledAgents || [],
         },
       });
       return response.data;
@@ -101,6 +103,21 @@ export function useDeleteProject() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+    },
+  });
+}
+
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Project> }) => {
+      const response = await apiClient.put<Project>(`/projects/${id}`, data);
+      return response.data;
+    },
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(updated.id) });
     },
   });
 }
