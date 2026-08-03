@@ -241,3 +241,80 @@ export function getProjectAgentStatuses(project: Project): Record<AgentType, Pro
 
   return result as Record<AgentType, ProjectAgentInfo>;
 }
+
+export interface DynamicNotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+  type: 'agent' | 'security' | 'build' | 'system';
+  link?: string;
+}
+
+/**
+ * Dynamically constructs live notifications based on actual project states and agent lifecycle activities.
+ */
+export function generateLiveProjectNotifications(projects: Project[]): DynamicNotificationItem[] {
+  const list: DynamicNotificationItem[] = [];
+
+  if (!projects || projects.length === 0) {
+    list.push({
+      id: 'welcome-notif',
+      title: 'DevForge AI Ready',
+      message: 'Create a new project to dispatch multi-agent pipelines.',
+      time: 'Just now',
+      read: false,
+      type: 'system',
+      link: '/dashboard/projects/new',
+    });
+    return list;
+  }
+
+  projects.forEach((proj) => {
+    const statuses = getProjectAgentStatuses(proj);
+    const allKeys = Object.keys(statuses) as AgentType[];
+    const runningAgent = allKeys.find((k) => statuses[k]?.status === 'running');
+    const completedAgents = allKeys.filter((k) => statuses[k]?.status === 'completed');
+
+    if (runningAgent) {
+      const info = statuses[runningAgent];
+      const agentConfig = AGENT_CONFIG[runningAgent];
+      list.push({
+        id: `agent-running-${proj.id}-${runningAgent}`,
+        title: `🤖 ${agentConfig?.name || 'Agent'} is Active`,
+        message: `[${proj.name}] ${info.message} (${proj.progress}% total progress)`,
+        time: 'Just now',
+        read: false,
+        type: 'agent',
+        link: `/dashboard/projects/${proj.id}/workspace`,
+      });
+    }
+
+    if (completedAgents.length > 0 && proj.status !== 'completed') {
+      list.push({
+        id: `agent-progress-${proj.id}`,
+        title: `🚀 Multi-Agent Progress`,
+        message: `[${proj.name}] ${completedAgents.length} of 10 AI agents completed their phases successfully.`,
+        time: '5 mins ago',
+        read: true,
+        type: 'build',
+        link: `/dashboard/projects/${proj.id}`,
+      });
+    }
+
+    if (proj.status === 'completed') {
+      list.push({
+        id: `project-completed-${proj.id}`,
+        title: `🎉 Project Build Complete`,
+        message: `[${proj.name}] All 10 agents completed code generation, security audits, and QA testing.`,
+        time: '10 mins ago',
+        read: false,
+        type: 'build',
+        link: `/dashboard/projects/${proj.id}/workspace`,
+      });
+    }
+  });
+
+  return list;
+}

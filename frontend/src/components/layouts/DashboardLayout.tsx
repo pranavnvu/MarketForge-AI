@@ -23,7 +23,9 @@ import {
 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { useProjects } from '@/hooks/use-projects';
 import { cleanImageUrl, isDirectImage } from '@/lib/avatar-helper';
+import { generateLiveProjectNotifications, type DynamicNotificationItem } from '@/lib/agent-lifecycle';
 import { CommandPalette } from '@/components/CommandPalette';
 import { APP_NAME, ROUTES } from '@/lib/constants';
 
@@ -261,11 +263,27 @@ function TopBar() {
   const { user } = useAuthStore();
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const { data: projects = [] } = useProjects();
 
-  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<DynamicNotificationItem[]>(initialNotifications);
   const [showNotifPopover, setShowNotifPopover] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread'>('all');
   const notifRef = useRef<HTMLDivElement>(null);
+
+  // Synchronize live agent notifications dynamically when projects or agent phases change
+  useEffect(() => {
+    if (projects && projects.length > 0) {
+      const liveNotifs = generateLiveProjectNotifications(projects);
+      setNotifications((prev) => {
+        const prevReadSet = new Set(prev.filter((p) => p.read).map((p) => p.id));
+        const merged = liveNotifs.map((n) => ({
+          ...n,
+          read: prevReadSet.has(n.id) ? true : n.read,
+        }));
+        return merged;
+      });
+    }
+  }, [projects]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
