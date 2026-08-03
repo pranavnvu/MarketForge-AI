@@ -365,36 +365,36 @@ function TopBar() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
                 transition={{ duration: 0.15 }}
-                className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-border/60 bg-card/95 p-4 shadow-2xl backdrop-blur-2xl z-50 text-foreground"
+                className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-border/80 bg-background shadow-[0_20px_60px_rgba(0,0,0,0.85)] z-50 text-foreground ring-1 ring-white/10 p-4"
               >
                 {/* Popover Header */}
-                <div className="flex items-center justify-between border-b border-border/50 pb-3">
+                <div className="flex items-center justify-between border-b border-border/60 pb-3">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-sm">Notifications</h3>
+                    <h3 className="font-bold text-sm text-foreground">Notifications</h3>
                     {unreadCount > 0 && (
-                      <span className="rounded-full bg-primary/10 border border-primary/30 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                      <span className="rounded-full bg-primary/20 border border-primary/40 px-2 py-0.5 text-[11px] font-bold text-primary">
                         {unreadCount} unread
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 text-xs">
+                  <div className="flex items-center gap-1.5 text-xs">
                     {unreadCount > 0 && (
                       <button
                         onClick={markAllAsRead}
-                        className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors text-[11px] font-medium"
+                        className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors text-[11px] font-semibold"
                         title="Mark all as read"
                       >
-                        <CheckCheck className="h-3.5 w-3.5" />
+                        <CheckCheck className="h-3.5 w-3.5 text-primary" />
                         Mark read
                       </button>
                     )}
                     {notifications.length > 0 && (
                       <button
                         onClick={clearAllNotifications}
-                        className="flex items-center gap-1 text-muted-foreground hover:text-red-400 transition-colors text-[11px] font-medium ml-2"
+                        className="flex items-center gap-1 text-muted-foreground hover:text-red-400 transition-colors text-[11px] font-semibold ml-2"
                         title="Clear all"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5 text-red-400" />
                         Clear
                       </button>
                     )}
@@ -402,23 +402,23 @@ function TopBar() {
                 </div>
 
                 {/* Filter Chips */}
-                <div className="flex items-center gap-2 pt-2.5 pb-1">
+                <div className="flex items-center gap-2 pt-3 pb-1.5">
                   <button
                     onClick={() => setActiveFilter('all')}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
                       activeFilter === 'all'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-accent/50 text-muted-foreground hover:bg-accent'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'bg-accent/60 text-muted-foreground hover:bg-accent hover:text-foreground'
                     }`}
                   >
                     All ({notifications.length})
                   </button>
                   <button
                     onClick={() => setActiveFilter('unread')}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
                       activeFilter === 'unread'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-accent/50 text-muted-foreground hover:bg-accent'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'bg-accent/60 text-muted-foreground hover:bg-accent hover:text-foreground'
                     }`}
                   >
                     Unread ({unreadCount})
@@ -426,7 +426,7 @@ function TopBar() {
                 </div>
 
                 {/* Notification Items List */}
-                <div className="mt-2 max-h-80 space-y-2 overflow-y-auto pr-1">
+                <div className="mt-2 max-h-80 space-y-2.5 overflow-y-auto pr-1">
                   {filteredNotifications.length > 0 ? (
                     filteredNotifications.map((notif) => (
                       <div
@@ -438,14 +438,14 @@ function TopBar() {
                             setShowNotifPopover(false);
                           }
                         }}
-                        className={`group relative flex items-start gap-3 rounded-xl p-2.5 text-xs transition-all cursor-pointer border ${
+                        className={`group relative flex items-start gap-3 rounded-xl p-3 text-xs transition-all cursor-pointer border ${
                           notif.read
-                            ? 'border-border/30 bg-accent/20 hover:bg-accent/40 text-muted-foreground'
-                            : 'border-primary/30 bg-primary/5 hover:bg-primary/10 text-foreground font-medium'
+                            ? 'border-border/50 bg-secondary/40 hover:bg-secondary/70 text-muted-foreground'
+                            : 'border-primary/50 bg-primary/10 hover:bg-primary/20 text-foreground font-semibold shadow-xs'
                         }`}
                       >
                         {/* Type Icon Badge */}
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-background border border-border/50 text-sm shadow-xs mt-0.5">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background/90 border border-border/70 text-base shadow-xs mt-0.5">
                           {notif.type === 'agent'
                             ? '🤖'
                             : notif.type === 'security'
@@ -458,12 +458,12 @@ function TopBar() {
                         {/* Content */}
                         <div className="flex-1 min-w-0 pr-4">
                           <div className="flex items-center justify-between gap-1">
-                            <span className="font-semibold truncate text-foreground text-xs">
+                            <span className="font-bold truncate text-foreground text-xs">
                               {notif.title}
                             </span>
-                            <span className="text-[10px] text-muted-foreground shrink-0">{notif.time}</span>
+                            <span className="text-[10px] font-medium text-muted-foreground shrink-0">{notif.time}</span>
                           </div>
-                          <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-1 leading-relaxed font-normal">
                             {notif.message}
                           </p>
                         </div>
