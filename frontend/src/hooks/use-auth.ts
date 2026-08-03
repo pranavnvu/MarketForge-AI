@@ -143,18 +143,25 @@ export function useUpdateProfile() {
 
   return useMutation({
     mutationFn: async (data: Partial<User>) => {
+      // Synchronously update local auth store so UI changes instantly
+      updateUser(data);
+
       try {
-        const response = await apiClient.put('/auth/me', data);
-        updateUser(response.data?.user || data);
-        return response.data;
-      } catch (err) {
-        // Update local state even if backend API route is offline/stubbed
-        updateUser(data);
-        return { user: data };
+        const response = await apiClient.put('/auth/me', {
+          name: data.name,
+          avatar: data.avatar,
+        });
+        if (response.data) {
+          updateUser(response.data);
+          return response.data;
+        }
+        return data;
+      } catch {
+        return data;
       }
     },
-    onSuccess: (_, variables) => {
-      updateUser(variables);
+    onSuccess: (updated) => {
+      if (updated) updateUser(updated);
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
     },
   });

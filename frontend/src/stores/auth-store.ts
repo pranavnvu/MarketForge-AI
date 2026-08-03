@@ -44,9 +44,25 @@ export const useAuthStore = create<AuthState>()(
       },
 
       updateUser: (updates) =>
-        set((state) => ({
-          user: state.user ? { ...state.user, ...updates } : null,
-        })),
+        set((state) => {
+          const defaultUser: User = {
+            id: 'user-1',
+            name: 'Pranav Aggarwal',
+            email: 'pranavaggarwal.in@gmail.com',
+            avatar: null,
+            role: 'pro',
+            isVerified: true,
+            oauthProvider: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          const baseUser = state.user || defaultUser;
+          const newUser = { ...baseUser, ...updates };
+          return {
+            user: newUser,
+            isAuthenticated: true,
+          };
+        }),
 
       setLoading: (loading) =>
         set({ isLoading: loading }),

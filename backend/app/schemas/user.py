@@ -20,6 +20,13 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     avatar: Optional[str] = None
+    job_title: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    website: Optional[str] = None
+    github: Optional[str] = None
+
+    model_config = ConfigDict(extra="ignore")
 
 
 class UserResponse(UserBase):
@@ -30,7 +37,7 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
 
 class UserInDB(UserResponse):

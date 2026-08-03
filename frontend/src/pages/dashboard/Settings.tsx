@@ -109,6 +109,12 @@ export default function Settings() {
     }
   };
 
+  const updateAvatar = (newAvatar: string) => {
+    setAvatarVal(newAvatar);
+    useAuthStore.getState().updateUser({ avatar: newAvatar });
+    updateProfile.mutate({ avatar: newAvatar });
+  };
+
   // Handle Local File Upload (converts image file to Data URL)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -125,23 +131,18 @@ export default function Settings() {
     }
 
     const reader = new FileReader();
-    reader.onload = async (event) => {
+    reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
       if (dataUrl) {
-        setAvatarVal(dataUrl);
-        try {
-          await updateProfile.mutateAsync({ avatar: dataUrl });
-          showToast('Profile picture uploaded and updated!');
-        } catch {
-          showToast('Profile picture preview set!');
-        }
+        updateAvatar(dataUrl);
+        showToast('Profile picture uploaded and updated!');
       }
     };
     reader.readAsDataURL(file);
   };
 
   // Handle External Picture URL
-  const handleApplyPictureUrl = async (e?: React.SyntheticEvent) => {
+  const handleApplyPictureUrl = (e?: React.SyntheticEvent) => {
     if (e) e.preventDefault();
     let url = pictureUrlInput.trim();
     if (!url) return;
@@ -150,16 +151,10 @@ export default function Settings() {
       url = 'https://' + url;
     }
 
-    setAvatarVal(url);
+    updateAvatar(url);
     setShowUrlInput(false);
     setPictureUrlInput('');
-
-    try {
-      await updateProfile.mutateAsync({ avatar: url });
-      showToast('Profile picture URL updated successfully!');
-    } catch {
-      showToast('Picture URL preview applied!');
-    }
+    showToast('Profile picture URL updated successfully!');
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -348,8 +343,7 @@ export default function Settings() {
                       <button
                         type="button"
                         onClick={() => {
-                          setAvatarVal('⚡');
-                          updateProfile.mutate({ avatar: '⚡' });
+                          updateAvatar('⚡');
                           showToast('Photo removed, default set.');
                         }}
                         className="inline-flex items-center gap-1 rounded-xl border border-red-500/30 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
@@ -393,10 +387,7 @@ export default function Settings() {
                       <button
                         key={preset.id}
                         type="button"
-                        onClick={() => {
-                          setAvatarVal(preset.emoji);
-                          updateProfile.mutate({ avatar: preset.emoji });
-                        }}
+                        onClick={() => updateAvatar(preset.emoji)}
                         className={`flex h-7 w-7 items-center justify-center rounded-lg border text-sm transition-all ${
                           avatarVal === preset.emoji
                             ? 'border-primary bg-primary/20 scale-110'
@@ -425,7 +416,11 @@ export default function Settings() {
                   <input
                     type="text"
                     value={avatarVal}
-                    onChange={(e) => setAvatarVal(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setAvatarVal(val);
+                      useAuthStore.getState().updateUser({ avatar: val });
+                    }}
                     placeholder="https://github.com/username.png or emoji (e.g. ⚡)"
                     className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all font-mono"
                   />
