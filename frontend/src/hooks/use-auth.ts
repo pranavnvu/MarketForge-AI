@@ -127,10 +127,16 @@ export function useResetPassword() {
 export function useChangePassword() {
   return useMutation({
     mutationFn: async (data: {
-      currentPassword: string;
-      newPassword: string;
+      currentPassword?: string;
+      newPassword?: string;
+      current_password?: string;
+      new_password?: string;
     }) => {
-      const response = await apiClient.put('/auth/change-password', data);
+      const payload = {
+        current_password: data.current_password || data.currentPassword,
+        new_password: data.new_password || data.newPassword,
+      };
+      const response = await apiClient.put('/auth/change-password', payload);
       return response.data;
     },
   });

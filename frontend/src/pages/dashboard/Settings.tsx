@@ -195,7 +195,8 @@ export default function Settings() {
       setConfirmPassword('');
       showToast('Password changed successfully!');
     } catch (err: any) {
-      showToast(err?.message || 'Failed to change password.', true);
+      const msg = err?.response?.data?.detail || err?.message || 'Failed to change password.';
+      showToast(typeof msg === 'string' ? msg : 'Failed to change password.', true);
     }
   };
 
