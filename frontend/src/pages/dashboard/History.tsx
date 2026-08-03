@@ -6,8 +6,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, CheckCircle, XCircle, AlertCircle, Search, X, Filter, FolderOpen, Calendar, Timer, Users, FileCode2 } from 'lucide-react';
 import { useProjects } from '@/hooks/use-projects';
-import { AGENT_CONFIG } from '@/lib/constants';
-import type { Project, ProjectStatus } from '@/types';
+import type { Project } from '@/types';
 
 // ---- Status Visuals ----
 const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; label: string }> = {
@@ -21,29 +20,28 @@ const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; la
   review: { icon: Clock, color: 'text-pink-400', label: 'Review' },
 };
 
+import { getProjectAgentStatuses } from '@/lib/agent-lifecycle';
+
 // ---- Helpers ----
-// Count agents assigned to each project using the same round-robin logic as the Agents page
-function getAgentCountsPerProject(projects: Project[]): Record<string, number> {
-  const allAgentKeys = Object.keys(AGENT_CONFIG);
-  const counts: Record<string, number> = {};
+// Count agents active or completed for each project using real phase-based lifecycle logic
+function getAgentCountsPerProject(projects: Project[]): Record<string, { active: number; completed: number; total: number }> {
+  const counts: Record<string, { active: number; completed: number; total: number }> = {};
 
-  // Initialize all projects to 0
   for (const p of projects) {
-    counts[p.id] = 0;
-  }
+    const agentMap = getProjectAgentStatuses(p);
+    let active = 0;
+    let completed = 0;
 
-  if (projects.length === 0) return counts;
-
-  for (let i = 0; i < allAgentKeys.length; i++) {
-    // Primary project via round-robin
-    const primaryIdx = i % projects.length;
-    counts[projects[primaryIdx].id] = (counts[projects[primaryIdx].id] || 0) + 1;
-
-    // Some agents also work on a second project
-    if (projects.length > 1 && i % 3 === 0) {
-      const secondIdx = (primaryIdx + 1) % projects.length;
-      counts[projects[secondIdx].id] = (counts[projects[secondIdx].id] || 0) + 1;
+    for (const info of Object.values(agentMap)) {
+      if (info.status === 'running') active++;
+      if (info.status === 'completed') completed++;
     }
+
+    counts[p.id] = {
+      active,
+      completed,
+      total: active + completed,
+    };
   }
 
   return counts;
@@ -250,7 +248,7 @@ export default function History() {
             {filteredProjects.map((project, i) => {
               const config = statusConfig[project.status] || statusConfig.draft;
               const Icon = config.icon;
-              const agentCount = agentCounts[project.id] || 0;
+              const agentStats = agentCounts[project.id] || { active: 0, completed: 0, total: 0 };
               const fileCount = estimateFileCount(project);
               const duration = estimateDuration(project);
               const deleted = isDeleted(project.id);
@@ -296,7 +294,18 @@ export default function History() {
 
                   {/* Agents */}
                   <div className="col-span-2">
-                    <span className="text-sm">{agentCount}</span>
+                    {project.status === 'completed' ? (
+                      <span className="text-sm font-medium text-emerald-500">10 completed</span>
+                    ) : agentStats.active > 0 ? (
+                      <span className="text-sm">
+                        <span className="font-semibold text-emerald-400">{agentStats.active} active</span>
+                        {agentStats.completed > 0 && (
+                          <span className="text-xs text-muted-foreground block">{agentStats.completed} done</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">0 active</span>
+                    )}
                   </div>
 
                   {/* Files */}

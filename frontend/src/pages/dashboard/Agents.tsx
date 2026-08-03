@@ -7,11 +7,19 @@ import { motion } from 'framer-motion';
 import { Search, X, Filter } from 'lucide-react';
 import { AGENT_CONFIG } from '@/lib/constants';
 import { useProjects } from '@/hooks/use-projects';
+import { getProjectAgentStatuses } from '@/lib/agent-lifecycle';
 import type { AgentType } from '@/types';
 
 type AgentStatus = 'running' | 'idle' | 'completed';
 
-// Distribute agents across all active projects
+interface AgentProjectDetail {
+  status: AgentStatus;
+  tasks: number;
+  runningProjects: { name: string; message: string }[];
+  completedProjects: { name: string }[];
+  waitingProjects: { name: string; message: string }[];
+}
+
 function useAgentStatuses() {
   const { data: dbProjects = [] } = useProjects();
 
@@ -27,37 +35,54 @@ function useAgentStatuses() {
   const activeProjects = dbProjects.filter((p) => !deletedIds.includes(p.id));
   const hasProjects = activeProjects.length > 0;
 
-  const statuses: Record<string, { status: AgentStatus; tasks: number; projects: string[] }> = {};
-
+  const statuses: Record<string, AgentProjectDetail> = {};
   const allAgentKeys = Object.keys(AGENT_CONFIG) as AgentType[];
 
-  // Each agent is assigned to projects in round-robin so they spread evenly
-  for (let i = 0; i < allAgentKeys.length; i++) {
-    const key = allAgentKeys[i];
+  for (const key of allAgentKeys) {
     if (!hasProjects) {
-      statuses[key] = { status: 'idle', tasks: 0, projects: [] };
+      statuses[key] = {
+        status: 'idle',
+        tasks: 0,
+        runningProjects: [],
+        completedProjects: [],
+        waitingProjects: [],
+      };
       continue;
     }
 
-    // Pick a primary project via round-robin
-    const primaryIdx = i % activeProjects.length;
-    const primaryProject = activeProjects[primaryIdx];
+    const running: { name: string; message: string }[] = [];
+    const completed: { name: string }[] = [];
+    const waiting: { name: string; message: string }[] = [];
 
-    // Some agents work across multiple projects
-    const assignedProjects: string[] = [primaryProject.name];
-    // If there are more projects, give some agents a second assignment
-    if (activeProjects.length > 1 && i % 3 === 0) {
-      const secondIdx = (primaryIdx + 1) % activeProjects.length;
-      assignedProjects.push(activeProjects[secondIdx].name);
+    for (const proj of activeProjects) {
+      const agentMap = getProjectAgentStatuses(proj);
+      const agentInfo = agentMap[key];
+      if (!agentInfo) continue;
+
+      if (agentInfo.status === 'running') {
+        running.push({ name: proj.name, message: agentInfo.message });
+      } else if (agentInfo.status === 'completed') {
+        completed.push({ name: proj.name });
+      } else if (agentInfo.status === 'waiting') {
+        waiting.push({ name: proj.name, message: agentInfo.message });
+      }
     }
 
-    const completedProjects = activeProjects.filter((p) => p.status === 'completed');
-    const isCompleted = completedProjects.some((p) => p.name === primaryProject.name);
+    let overallStatus: AgentStatus = 'idle';
+    if (running.length > 0) {
+      overallStatus = 'running';
+    } else if (completed.length > 0) {
+      overallStatus = 'completed';
+    } else {
+      overallStatus = 'idle';
+    }
 
     statuses[key] = {
-      status: isCompleted ? 'completed' : 'running',
-      tasks: assignedProjects.length,
-      projects: assignedProjects,
+      status: overallStatus,
+      tasks: running.length + completed.length,
+      runningProjects: running,
+      completedProjects: completed,
+      waitingProjects: waiting,
     };
   }
 
@@ -79,7 +104,13 @@ export default function Agents() {
     ([key, agent]) => ({
       key,
       ...agent,
-      ...(statuses[key] || { status: 'idle' as AgentStatus, tasks: 0 }),
+      ...(statuses[key] || {
+        status: 'idle' as AgentStatus,
+        tasks: 0,
+        runningProjects: [],
+        completedProjects: [],
+        waitingProjects: [],
+      }),
     })
   );
 
@@ -196,13 +227,33 @@ export default function Agents() {
                   </span>
                 </div>
 
-                {agent.projects && agent.projects.length > 0 && (
-                  <div className="rounded-lg bg-accent/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
-                    {agent.projects.map((projName) => (
-                      <div key={projName}>
-                        📂 Working on: <span className="font-medium text-foreground">{projName}</span>
+                {/* Active Running Projects */}
+                {agent.runningProjects.length > 0 && (
+                  <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-400 space-y-1">
+                    {agent.runningProjects.map((p) => (
+                      <div key={p.name} className="truncate">
+                        ⚡ Working on: <span className="font-semibold text-foreground">{p.name}</span>
+                        <div className="text-[11px] text-muted-foreground truncate">{p.message}</div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Completed Projects */}
+                {agent.completedProjects.length > 0 && (
+                  <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-2 text-xs text-blue-400 space-y-1">
+                    {agent.completedProjects.map((p) => (
+                      <div key={p.name} className="truncate">
+                        ✅ Completed on: <span className="font-semibold text-foreground">{p.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Waiting Projects */}
+                {agent.runningProjects.length === 0 && agent.completedProjects.length === 0 && agent.waitingProjects.length > 0 && (
+                  <div className="rounded-lg bg-accent/40 px-3 py-1.5 text-xs text-muted-foreground truncate">
+                    ⏳ Waiting on: <span className="font-medium text-foreground">{agent.waitingProjects[0].name}</span>
                   </div>
                 )}
               </div>
