@@ -2,7 +2,7 @@
 // DevForge AI — Settings & Profile Management
 // ============================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User as UserIcon,
@@ -22,6 +22,9 @@ import {
   Briefcase,
   GitBranch,
   Link as LinkIcon,
+  Upload,
+  Image as ImageIcon,
+  X,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUpdateProfile, useChangePassword, useDeleteAccount } from '@/hooks/use-auth';
@@ -51,11 +54,17 @@ export default function Settings() {
   const deleteAccount = useDeleteAccount();
   const { theme, setTheme } = useUIStore();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [activeTab, setActiveTab] = useState('profile');
 
   // Form State initialized with real User values
   const [name, setName] = useState(user?.name || 'Pranav Aggarwal');
   const [email, setEmail] = useState(user?.email || 'pranavaggarwal.in@gmail.com');
+  const [avatarVal, setAvatarVal] = useState(user?.avatar || '⚡');
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [pictureUrlInput, setPictureUrlInput] = useState('');
+
   const [jobTitle, setJobTitle] = useState(user?.jobTitle || 'Lead AI Engineering Architect');
   const [bio, setBio] = useState(
     user?.bio || 'Building autonomous AI multi-agent software systems with DevForge AI.'
@@ -63,7 +72,6 @@ export default function Settings() {
   const [location, setLocation] = useState(user?.location || 'New Delhi, India');
   const [website, setWebsite] = useState(user?.website || 'https://pranavaggarwal.in');
   const [github, setGithub] = useState(user?.github || 'pranavaggarwal');
-  const [selectedAvatarEmoji, setSelectedAvatarEmoji] = useState('⚡');
 
   // Security Form State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -82,6 +90,7 @@ export default function Settings() {
     if (user) {
       if (user.name) setName(user.name);
       if (user.email) setEmail(user.email);
+      if (user.avatar) setAvatarVal(user.avatar);
       if (user.jobTitle) setJobTitle(user.jobTitle);
       if (user.bio) setBio(user.bio);
       if (user.location) setLocation(user.location);
@@ -100,12 +109,60 @@ export default function Settings() {
     }
   };
 
+  // Handle Local File Upload (converts image file to Data URL)
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image file (PNG, JPG, WebP, GIF)', true);
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Image size should be under 5MB.', true);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        setAvatarVal(dataUrl);
+        try {
+          await updateProfile.mutateAsync({ avatar: dataUrl });
+          showToast('Profile picture uploaded and updated!');
+        } catch {
+          showToast('Profile picture preview set!');
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle External Picture URL
+  const handleApplyPictureUrl = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pictureUrlInput.trim()) return;
+    const url = pictureUrlInput.trim();
+    setAvatarVal(url);
+    setShowUrlInput(false);
+    setPictureUrlInput('');
+    try {
+      await updateProfile.mutateAsync({ avatar: url });
+      showToast('Picture URL updated successfully!');
+    } catch {
+      showToast('Picture preview set!');
+    }
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await updateProfile.mutateAsync({
         name,
         email,
+        avatar: avatarVal,
         jobTitle,
         bio,
         location,
@@ -147,8 +204,19 @@ export default function Settings() {
     deleteAccount.mutate();
   };
 
+  const isImageAvatar = avatarVal && (avatarVal.startsWith('data:') || avatarVal.startsWith('http'));
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Hidden File Input for Image Upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
       {/* Toast Alerts */}
       <AnimatePresence>
         {successToast && (
@@ -213,17 +281,27 @@ export default function Settings() {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
               {/* Profile Card Header */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 border-b border-border/50 pb-6">
-                {/* Avatar Badge */}
-                <div className="relative group">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-600 to-cyan-500 text-3xl font-extrabold text-white shadow-lg shadow-purple-500/20 ring-4 ring-primary/20">
-                    {selectedAvatarEmoji ? selectedAvatarEmoji : (name && name.length > 0 ? name.charAt(0).toUpperCase() : 'P')}
+                {/* Avatar Badge with Clickable Upload */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="relative group cursor-pointer"
+                  title="Click to upload profile picture"
+                >
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-600 to-cyan-500 text-3xl font-extrabold text-white shadow-lg shadow-purple-500/20 ring-4 ring-primary/20 overflow-hidden">
+                    {isImageAvatar ? (
+                      <img src={avatarVal} alt={name} className="h-full w-full object-cover" />
+                    ) : avatarVal ? (
+                      <span>{avatarVal}</span>
+                    ) : (
+                      <span>{name && name.length > 0 ? name.charAt(0).toUpperCase() : 'P'}</span>
+                    )}
                   </div>
-                  <div className="absolute -bottom-1 -right-1 rounded-full bg-background p-1 shadow-md border border-border">
-                    <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                  <div className="absolute -bottom-1 -right-1 rounded-full bg-primary text-white p-1.5 shadow-lg border border-background group-hover:scale-110 transition-transform">
+                    <Camera className="h-3.5 w-3.5" />
                   </div>
                 </div>
 
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 space-y-2">
                   <div className="flex items-center gap-2.5">
                     <h2 className="text-xl font-bold truncate">{name || 'User Profile'}</h2>
                     <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 border border-purple-500/30 px-2.5 py-0.5 text-xs font-semibold text-purple-400">
@@ -231,18 +309,76 @@ export default function Settings() {
                       Pro Account
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{email}</p>
+                  <p className="text-xs text-muted-foreground truncate">{email}</p>
+
+                  {/* Profile Picture Actions */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      Upload Picture
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowUrlInput(!showUrlInput)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-border/50 px-3 py-1.5 text-xs font-semibold hover:bg-accent transition-colors"
+                    >
+                      <ImageIcon className="h-3.5 w-3.5" />
+                      Image URL
+                    </button>
+
+                    {isImageAvatar && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAvatarVal('⚡');
+                          updateProfile.mutate({ avatar: '⚡' });
+                          showToast('Photo removed, default set.');
+                        }}
+                        className="inline-flex items-center gap-1 rounded-xl border border-red-500/30 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Remove Photo
+                      </button>
+                    )}
+                  </div>
+
+                  {/* URL Input Dropdown */}
+                  {showUrlInput && (
+                    <form onSubmit={handleApplyPictureUrl} className="flex gap-2 max-w-md pt-2">
+                      <input
+                        type="url"
+                        value={pictureUrlInput}
+                        onChange={(e) => setPictureUrlInput(e.target.value)}
+                        placeholder="Paste image URL (e.g. https://github.com/username.png)"
+                        className="flex-1 rounded-xl border border-border/50 bg-background px-3 py-1.5 text-xs focus:border-primary focus:outline-none"
+                      />
+                      <button
+                        type="submit"
+                        className="rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+                      >
+                        Apply
+                      </button>
+                    </form>
+                  )}
 
                   {/* Preset Avatar Selection */}
-                  <div className="mt-3 flex items-center gap-1.5">
-                    <span className="text-xs text-muted-foreground mr-1">Avatar Preset:</span>
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <span className="text-xs text-muted-foreground mr-1">Presets:</span>
                     {avatarPresets.map((preset) => (
                       <button
                         key={preset.id}
                         type="button"
-                        onClick={() => setSelectedAvatarEmoji(preset.emoji)}
+                        onClick={() => {
+                          setAvatarVal(preset.emoji);
+                          updateProfile.mutate({ avatar: preset.emoji });
+                        }}
                         className={`flex h-7 w-7 items-center justify-center rounded-lg border text-sm transition-all ${
-                          selectedAvatarEmoji === preset.emoji
+                          avatarVal === preset.emoji
                             ? 'border-primary bg-primary/20 scale-110'
                             : 'border-border/50 hover:bg-accent'
                         }`}
