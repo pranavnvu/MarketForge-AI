@@ -141,18 +141,24 @@ export default function Settings() {
   };
 
   // Handle External Picture URL
-  const handleApplyPictureUrl = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pictureUrlInput.trim()) return;
-    const url = pictureUrlInput.trim();
+  const handleApplyPictureUrl = async (e?: React.SyntheticEvent) => {
+    if (e) e.preventDefault();
+    let url = pictureUrlInput.trim();
+    if (!url) return;
+
+    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('data:')) {
+      url = 'https://' + url;
+    }
+
     setAvatarVal(url);
     setShowUrlInput(false);
     setPictureUrlInput('');
+
     try {
       await updateProfile.mutateAsync({ avatar: url });
-      showToast('Picture URL updated successfully!');
+      showToast('Profile picture URL updated successfully!');
     } catch {
-      showToast('Picture preview set!');
+      showToast('Picture URL preview applied!');
     }
   };
 
@@ -204,7 +210,14 @@ export default function Settings() {
     deleteAccount.mutate();
   };
 
-  const isImageAvatar = avatarVal && (avatarVal.startsWith('data:') || avatarVal.startsWith('http'));
+  const isImageAvatar = Boolean(
+    avatarVal &&
+      (avatarVal.startsWith('http://') ||
+        avatarVal.startsWith('https://') ||
+        avatarVal.startsWith('data:') ||
+        avatarVal.includes('/') ||
+        avatarVal.includes('.'))
+  );
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -349,21 +362,28 @@ export default function Settings() {
 
                   {/* URL Input Dropdown */}
                   {showUrlInput && (
-                    <form onSubmit={handleApplyPictureUrl} className="flex gap-2 max-w-md pt-2">
+                    <div className="flex gap-2 max-w-md pt-2">
                       <input
-                        type="url"
+                        type="text"
                         value={pictureUrlInput}
                         onChange={(e) => setPictureUrlInput(e.target.value)}
-                        placeholder="Paste image URL (e.g. https://github.com/username.png)"
-                        className="flex-1 rounded-xl border border-border/50 bg-background px-3 py-1.5 text-xs focus:border-primary focus:outline-none"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleApplyPictureUrl(e);
+                          }
+                        }}
+                        placeholder="Paste image URL (e.g. github.com/username.png)"
+                        className="flex-1 rounded-xl border border-border/50 bg-background px-3.5 py-2 text-xs focus:border-primary focus:outline-none"
                       />
                       <button
-                        type="submit"
-                        className="rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+                        type="button"
+                        onClick={handleApplyPictureUrl}
+                        className="rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
                       >
-                        Apply
+                        Apply URL
                       </button>
-                    </form>
+                    </div>
                   )}
 
                   {/* Preset Avatar Selection */}
@@ -392,6 +412,25 @@ export default function Settings() {
 
               {/* Form Inputs */}
               <form onSubmit={handleSaveProfile} className="space-y-4">
+                <div>
+                  <label className="mb-1.5 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <ImageIcon className="h-3.5 w-3.5 text-primary" />
+                      Avatar Image URL / Preset
+                    </span>
+                    {isImageAvatar && (
+                      <span className="text-[11px] font-normal text-emerald-400">Custom Image Active</span>
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    value={avatarVal}
+                    onChange={(e) => setAvatarVal(e.target.value)}
+                    placeholder="https://github.com/username.png or emoji (e.g. ⚡)"
+                    className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all font-mono"
+                  />
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
