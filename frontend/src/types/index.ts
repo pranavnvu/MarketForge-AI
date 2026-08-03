@@ -11,6 +11,11 @@ export interface User {
   role: 'user' | 'admin' | 'pro';
   isVerified: boolean;
   oauthProvider: string | null;
+  bio?: string;
+  location?: string;
+  website?: string;
+  github?: string;
+  jobTitle?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,96 +1,598 @@
-// DevForge AI — Settings Page
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { User, Bell, Shield, Palette, Globe, Trash2 } from 'lucide-react';
+// ============================================
+// DevForge AI — Settings & Profile Management
+// ============================================
+
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  User as UserIcon,
+  Bell,
+  Shield,
+  Palette,
+  Globe,
+  Trash2,
+  CheckCircle2,
+  Camera,
+  Key,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  Sparkles,
+  MapPin,
+  Briefcase,
+  GitBranch,
+  Link as LinkIcon,
+} from 'lucide-react';
+import { useAuthStore } from '@/stores/auth-store';
+import { useUpdateProfile, useChangePassword, useDeleteAccount } from '@/hooks/use-auth';
 import { useUIStore } from '@/stores/ui-store';
 
 const tabs = [
-  { id: 'profile', label: 'Profile', icon: User },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'profile', label: 'Profile', icon: UserIcon },
   { id: 'security', label: 'Security', icon: Shield },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'integrations', label: 'Integrations', icon: Globe },
 ];
 
+const avatarPresets = [
+  { id: 'avatar-1', emoji: '⚡', bg: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  { id: 'avatar-2', emoji: '👨‍💻', bg: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  { id: 'avatar-3', emoji: '🚀', bg: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  { id: 'avatar-4', emoji: '🧠', bg: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
+  { id: 'avatar-5', emoji: '🛡️', bg: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  { id: 'avatar-6', emoji: '🤖', bg: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+];
+
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState('profile');
+  const { user } = useAuthStore();
+  const updateProfile = useUpdateProfile();
+  const changePassword = useChangePassword();
+  const deleteAccount = useDeleteAccount();
   const { theme, setTheme } = useUIStore();
 
+  const [activeTab, setActiveTab] = useState('profile');
+
+  // Form State initialized with real User values
+  const [name, setName] = useState(user?.name || 'Pranav Aggarwal');
+  const [email, setEmail] = useState(user?.email || 'pranavaggarwal.in@gmail.com');
+  const [jobTitle, setJobTitle] = useState(user?.jobTitle || 'Lead AI Engineering Architect');
+  const [bio, setBio] = useState(
+    user?.bio || 'Building autonomous AI multi-agent software systems with DevForge AI.'
+  );
+  const [location, setLocation] = useState(user?.location || 'New Delhi, India');
+  const [website, setWebsite] = useState(user?.website || 'https://pranavaggarwal.in');
+  const [github, setGithub] = useState(user?.github || 'pranavaggarwal');
+  const [selectedAvatarEmoji, setSelectedAvatarEmoji] = useState('⚡');
+
+  // Security Form State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  // UI Toast State
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+  // Sync form inputs if user object loads asynchronously
+  useEffect(() => {
+    if (user) {
+      if (user.name) setName(user.name);
+      if (user.email) setEmail(user.email);
+      if (user.jobTitle) setJobTitle(user.jobTitle);
+      if (user.bio) setBio(user.bio);
+      if (user.location) setLocation(user.location);
+      if (user.website) setWebsite(user.website);
+      if (user.github) setGithub(user.github);
+    }
+  }, [user]);
+
+  const showToast = (msg: string, isError = false) => {
+    if (isError) {
+      setErrorToast(msg);
+      setTimeout(() => setErrorToast(null), 4000);
+    } else {
+      setSuccessToast(msg);
+      setTimeout(() => setSuccessToast(null), 4000);
+    }
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateProfile.mutateAsync({
+        name,
+        email,
+        jobTitle,
+        bio,
+        location,
+        website,
+        github,
+      });
+      showToast('Profile updated successfully!');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to update profile', true);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword) {
+      showToast('Please enter your current and new password.', true);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast('New passwords do not match.', true);
+      return;
+    }
+    try {
+      await changePassword.mutateAsync({ currentPassword, newPassword });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      showToast('Password changed successfully!');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to change password.', true);
+    }
+  };
+
+  const handleDeleteAccountConfirm = () => {
+    if (deleteConfirmText !== 'DELETE') {
+      showToast('Please type DELETE to confirm account deletion.', true);
+      return;
+    }
+    deleteAccount.mutate();
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Toast Alerts */}
+      <AnimatePresence>
+        {successToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-emerald-500 border border-emerald-400 px-4 py-3 text-sm font-semibold text-white shadow-2xl"
+          >
+            <CheckCircle2 className="h-5 w-5" />
+            {successToast}
+          </motion.div>
+        )}
+        {errorToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-red-500 border border-red-400 px-4 py-3 text-sm font-semibold text-white shadow-2xl"
+          >
+            <AlertTriangle className="h-5 w-5" />
+            {errorToast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">Configure your account and preferences.</p>
+        <h1 className="text-2xl font-bold tracking-tight">Account Settings</h1>
+        <p className="text-sm text-muted-foreground">
+          Manage your personal profile, credentials, notifications, and preferences.
+        </p>
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row">
-        {/* Tabs */}
-        <nav className="flex lg:flex-col gap-1 lg:w-52 shrink-0">
+        {/* Navigation Sidebar Tabs */}
+        <nav className="flex lg:flex-col gap-1 lg:w-56 shrink-0">
           {tabs.map((tab) => {
             const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
             return (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${activeTab === tab.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent'}`}>
-                <Icon className="h-4 w-4" />{tab.label}
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
+                  isActive
+                    ? 'bg-primary/10 text-primary border border-primary/20 shadow-sm'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {tab.label}
               </button>
             );
           })}
         </nav>
 
-        {/* Content */}
-        <div className="flex-1 rounded-2xl border border-border/50 bg-card/50 p-6 backdrop-blur-sm">
+        {/* Tab Content Box */}
+        <div className="flex-1 rounded-2xl border border-border/50 bg-card/50 p-6 backdrop-blur-sm shadow-sm space-y-6">
+          {/* TAB 1: PROFILE */}
           {activeTab === 'profile' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-              <h2 className="text-lg font-semibold">Profile Settings</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div><label className="mb-1.5 block text-sm font-medium">Full Name</label>
-                  <input type="text" defaultValue="John Doe" className="w-full rounded-xl border border-border/50 bg-background px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" /></div>
-                <div><label className="mb-1.5 block text-sm font-medium">Email</label>
-                  <input type="email" defaultValue="john@example.com" className="w-full rounded-xl border border-border/50 bg-background px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" /></div>
-              </div>
-              <div><label className="mb-1.5 block text-sm font-medium">Bio</label>
-                <textarea rows={3} defaultValue="Full-stack developer passionate about AI." className="w-full rounded-xl border border-border/50 bg-background px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" /></div>
-              <button className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Save Changes</button>
-            </motion.div>
-          )}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              {/* Profile Card Header */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 border-b border-border/50 pb-6">
+                {/* Avatar Badge */}
+                <div className="relative group">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-600 to-cyan-500 text-3xl font-extrabold text-white shadow-lg shadow-purple-500/20 ring-4 ring-primary/20">
+                    {selectedAvatarEmoji ? selectedAvatarEmoji : (name && name.length > 0 ? name.charAt(0).toUpperCase() : 'P')}
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 rounded-full bg-background p-1 shadow-md border border-border">
+                    <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                </div>
 
-          {activeTab === 'appearance' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-              <h2 className="text-lg font-semibold">Appearance</h2>
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Choose your preferred theme.</p>
-                <div className="flex gap-3">
-                  {(['light', 'dark', 'system'] as const).map((t) => (
-                    <button key={t} onClick={() => setTheme(t)}
-                      className={`rounded-xl border px-4 py-2.5 text-sm font-medium capitalize transition-colors ${theme === t ? 'border-primary bg-primary/10 text-primary' : 'border-border/50 hover:bg-accent'}`}>
-                      {t}
-                    </button>
-                  ))}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-xl font-bold truncate">{name || 'User Profile'}</h2>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 border border-purple-500/30 px-2.5 py-0.5 text-xs font-semibold text-purple-400">
+                      <Sparkles className="h-3 w-3" />
+                      Pro Account
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{email}</p>
+
+                  {/* Preset Avatar Selection */}
+                  <div className="mt-3 flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground mr-1">Avatar Preset:</span>
+                    {avatarPresets.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => setSelectedAvatarEmoji(preset.emoji)}
+                        className={`flex h-7 w-7 items-center justify-center rounded-lg border text-sm transition-all ${
+                          selectedAvatarEmoji === preset.emoji
+                            ? 'border-primary bg-primary/20 scale-110'
+                            : 'border-border/50 hover:bg-accent'
+                        }`}
+                      >
+                        {preset.emoji}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
+
+              {/* Form Inputs */}
+              <form onSubmit={handleSaveProfile} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Your Full Name"
+                      className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="your.email@domain.com"
+                      className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <Briefcase className="h-3.5 w-3.5 text-primary" />
+                      Job Title / Role
+                    </label>
+                    <input
+                      type="text"
+                      value={jobTitle}
+                      onChange={(e) => setJobTitle(e.target.value)}
+                      placeholder="e.g. Lead AI Engineer"
+                      className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5 text-primary" />
+                      Location
+                    </label>
+                    <input
+                      type="text"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="e.g. San Francisco, CA"
+                      className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Bio & Summary
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Tell us about yourself and your engineering interests..."
+                    className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all leading-relaxed"
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <LinkIcon className="h-3.5 w-3.5 text-primary" />
+                      Portfolio / Website
+                    </label>
+                    <input
+                      type="url"
+                      value={website}
+                      onChange={(e) => setWebsite(e.target.value)}
+                      placeholder="https://yourwebsite.com"
+                      className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <GitBranch className="h-3.5 w-3.5 text-primary" />
+                      GitHub Username
+                    </label>
+                    <input
+                      type="text"
+                      value={github}
+                      onChange={(e) => setGithub(e.target.value)}
+                      placeholder="username"
+                      className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Save Button */}
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={updateProfile.isPending}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:opacity-90 transition-all disabled:opacity-50"
+                  >
+                    {updateProfile.isPending ? 'Saving...' : 'Save Profile Changes'}
+                  </button>
+                </div>
+              </form>
+
+              {/* Danger Zone */}
+              <div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/5 p-5">
+                <h3 className="font-bold text-red-500 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Danger Zone
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                  Permanently delete your account and remove all active projects, API keys, and workspace data.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete Account
+                </button>
+              </div>
             </motion.div>
           )}
 
-          {activeTab !== 'profile' && activeTab !== 'appearance' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex h-48 items-center justify-center">
-              <p className="text-sm text-muted-foreground">
-                {tabs.find((t) => t.id === activeTab)?.label} settings will be available in Phase 2.
-              </p>
+          {/* TAB 2: SECURITY */}
+          {activeTab === 'security' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              <div>
+                <h2 className="text-lg font-bold">Security & Password</h2>
+                <p className="text-xs text-muted-foreground">
+                  Update your password and configure account security options.
+                </p>
+              </div>
+
+              <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Current Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Enter current password"
+                      className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 pr-10 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    New Password
+                  </label>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 8 characters"
+                    className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={changePassword.isPending}
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50"
+                >
+                  <Key className="h-4 w-4" />
+                  {changePassword.isPending ? 'Updating...' : 'Update Password'}
+                </button>
+              </form>
             </motion.div>
           )}
 
-          {/* Danger Zone */}
-          {activeTab === 'profile' && (
-            <div className="mt-8 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-              <h3 className="font-semibold text-destructive">Danger Zone</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Permanently delete your account and all data.</p>
-              <button className="mt-3 inline-flex items-center gap-2 rounded-xl border border-destructive/50 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
-                <Trash2 className="h-4 w-4" />Delete Account
-              </button>
-            </div>
+          {/* TAB 3: NOTIFICATIONS */}
+          {activeTab === 'notifications' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              <div>
+                <h2 className="text-lg font-bold">Notification Preferences</h2>
+                <p className="text-xs text-muted-foreground">Control how and when DevForge AI contacts you.</p>
+              </div>
+
+              <div className="space-y-4 max-w-lg">
+                {[
+                  { id: 'builds', title: 'Project Execution Complete', desc: 'Email notification when multi-agent build finishes.' },
+                  { id: 'security', title: 'Security & Secret Alerts', desc: 'Alerts when OWASP vulnerability scanner finds secrets.' },
+                  { id: 'newsletter', title: 'Product & Agent Updates', desc: 'Monthly updates on new AI agents and platform features.' },
+                ].map((item) => (
+                  <div key={item.id} className="flex items-center justify-between rounded-xl border border-border/40 p-4 bg-background/40">
+                    <div>
+                      <p className="font-semibold text-xs">{item.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                    </div>
+                    <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* TAB 4: APPEARANCE */}
+          {activeTab === 'appearance' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              <div>
+                <h2 className="text-lg font-bold">Theme & Appearance</h2>
+                <p className="text-xs text-muted-foreground">Customize the visual theme of the dashboard.</p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                {(['light', 'dark', 'system'] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTheme(t)}
+                    className={`rounded-xl border px-5 py-3 text-xs font-semibold capitalize transition-all ${
+                      theme === t
+                        ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary'
+                        : 'border-border/50 bg-background/40 hover:bg-accent'
+                    }`}
+                  >
+                    {t === 'dark' ? '🌙 Dark Mode' : t === 'light' ? '☀️ Light Mode' : '🖥️ System Preference'}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* TAB 5: INTEGRATIONS */}
+          {activeTab === 'integrations' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              <div>
+                <h2 className="text-lg font-bold">Integrations & Connected Services</h2>
+                <p className="text-xs text-muted-foreground">Connect external services to your DevForge workspace.</p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  { name: 'GitHub', desc: 'Push code directly to repositories.', connected: true },
+                  { name: 'Vercel', desc: 'Deploy web applications seamlessly.', connected: false },
+                  { name: 'Docker Hub', desc: 'Push containerized microservices.', connected: false },
+                  { name: 'AWS Cloud', desc: 'Deploy cloud infrastructure.', connected: false },
+                ].map((item) => (
+                  <div key={item.name} className="flex items-center justify-between rounded-xl border border-border/40 p-4 bg-background/40">
+                    <div>
+                      <p className="font-semibold text-xs">{item.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                    </div>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${item.connected ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-accent text-muted-foreground'}`}>
+                      {item.connected ? 'Connected' : 'Connect'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
           )}
         </div>
       </div>
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md rounded-2xl border border-red-500/40 bg-card p-6 shadow-2xl space-y-4"
+          >
+            <h3 className="text-lg font-bold text-red-500 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Account Confirmation
+            </h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              This action cannot be undone. All your project code, history, and workspace files will be permanently deleted.
+            </p>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                Type <span className="font-bold text-foreground">DELETE</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full rounded-xl border border-red-500/30 bg-background px-3.5 py-2 text-sm focus:border-red-500 focus:outline-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteConfirmText('');
+                }}
+                className="rounded-xl border border-border/50 px-4 py-2 text-xs font-semibold hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccountConfirm}
+                className="rounded-xl bg-red-500 px-4 py-2 text-xs font-semibold text-white hover:bg-red-600"
+              >
+                Permanently Delete
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
