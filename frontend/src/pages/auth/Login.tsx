@@ -25,19 +25,36 @@ export default function Login() {
     const oauthRefresh = params.get('oauth_refresh');
 
     if (oauthToken && oauthRefresh) {
-      localStorage.setItem('devforge_access_token', oauthToken);
-      localStorage.setItem('devforge_refresh_token', oauthRefresh);
+      sessionStorage.setItem('devforge_access_token', oauthToken);
+      sessionStorage.setItem('devforge_refresh_token', oauthRefresh);
 
       apiClient.get('/auth/me')
         .then((res) => {
-          setAuth(res.data, oauthToken, oauthRefresh);
+          const raw = res.data?.data ?? res.data;
+          const user = {
+            id: raw.id,
+            name: raw.name,
+            email: raw.email,
+            avatar: raw.avatar ?? null,
+            role: raw.role ?? 'user',
+            isVerified: raw.is_verified ?? raw.isVerified ?? true,
+            oauthProvider: raw.oauth_provider ?? raw.oauthProvider ?? 'google',
+            bio: raw.bio ?? undefined,
+            location: raw.location ?? undefined,
+            website: raw.website ?? undefined,
+            github: raw.github ?? undefined,
+            jobTitle: raw.job_title ?? raw.jobTitle ?? undefined,
+            createdAt: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+            updatedAt: raw.updated_at ?? raw.updatedAt ?? new Date().toISOString(),
+          };
+          setAuth(user, oauthToken, oauthRefresh);
           navigate('/dashboard');
         })
         .catch(() => {
           setAuth(
             {
               id: 'usr-oauth',
-              email: 'oauth_user@devforge.ai',
+              email: 'oauth_user@marketforge.ai',
               name: 'OAuth Developer',
               avatar: null,
               role: 'user',

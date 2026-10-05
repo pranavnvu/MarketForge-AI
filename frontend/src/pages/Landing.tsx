@@ -5,7 +5,7 @@
 
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles, Bot, GitBranch, Zap } from 'lucide-react';
+import { ArrowRight, Sparkles, Bot, Zap } from 'lucide-react';
 import { APP_NAME } from '@/lib/constants';
 
 export default function Landing() {
@@ -62,12 +62,12 @@ export default function Landing() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-5xl font-extrabold leading-tight tracking-tight sm:text-7xl"
+            className="text-5xl font-extrabold tracking-tight sm:text-7xl lg:text-8xl"
           >
-            Build Software with
+            Run Campaigns with
             <br />
             <span className="bg-gradient-to-r from-purple-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent">
-              AI Engineering Teams
+              AI Marketing Teams
             </span>
           </motion.h1>
 
@@ -78,8 +78,8 @@ export default function Landing() {
             transition={{ delay: 0.3 }}
             className="mx-auto mt-6 max-w-2xl text-lg text-slate-400 leading-relaxed"
           >
-            Describe your software idea and watch 10 specialized AI agents collaborate
-            to design, build, test, and deploy your entire application — in minutes, not months.
+            Describe your product idea and watch 3 specialized AI agents collaborate
+            to strategize, write, audit, and launch your entire marketing campaign — in minutes, not months.
           </motion.p>
 
           {/* CTA */}
@@ -96,12 +96,6 @@ export default function Landing() {
               Start Building Free
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-8 py-3.5 text-base font-semibold hover:bg-white/5 transition-colors"
-            >
-              View Demo
-            </Link>
           </motion.div>
 
           {/* Feature pills */}
@@ -112,8 +106,7 @@ export default function Landing() {
             className="mt-16 flex flex-wrap items-center justify-center gap-3"
           >
             {[
-              { icon: Bot, label: '10 AI Agents' },
-              { icon: GitBranch, label: 'GitHub Integration' },
+              { icon: Bot, label: '3 AI Agents' },
               { icon: Zap, label: 'Real-time Updates' },
             ].map((item) => (
               <div

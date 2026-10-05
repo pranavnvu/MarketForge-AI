@@ -23,33 +23,44 @@ async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> User:
+    if not token:
+        raise AuthenticationError("Not authenticated")
+        
     user_service = UserService(db)
-    if token:
-        try:
-            payload = decode_token(token)
-            user_id_str: str = str(payload.get("sub"))
-            if user_id_str:
-                user = await user_service.get_by_id(user_id_str)
-                if user:
-                    return user
-        except Exception:
-            pass
-
-    # Resilient fallback to active user in devforge.db for local dev execution
-    user_by_email = await user_service.get_by_email("pranavaggarwal.in@gmail.com")
-    if user_by_email:
-        return user_by_email
-
-    users_res = await db.execute(select(User))
-    user = users_res.scalars().first()
-    if user:
+    try:
+        if token.startswith("df_"):
+            import hashlib
+            from sqlalchemy import select
+            from app.models.auth import ApiKey
+            
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            result = await db.execute(select(ApiKey).where(ApiKey.key_hash == token_hash))
+            api_key = result.scalar_one_or_none()
+            if not api_key or not api_key.is_active:
+                raise AuthenticationError("Invalid or revoked API Key")
+            
+            # Update last used
+            from datetime import datetime, timezone
+            api_key.last_used_at = datetime.now(timezone.utc)
+            await db.commit()
+            
+            user = await user_service.get_by_id(api_key.user_id)
+            if not user:
+                raise AuthenticationError("User not found")
+            return user
+        
+        payload = decode_token(token)
+        user_id_str: str = str(payload.get("sub"))
+        if not user_id_str:
+            raise AuthenticationError("Invalid token payload")
+            
+        user = await user_service.get_by_id(user_id_str)
+        if not user:
+            raise AuthenticationError("User not found")
+            
         return user
-
-    from app.schemas.auth import RegisterRequest
-    return await user_service.create_user(
-        RegisterRequest(name="Pranav Aggarwal", email="pranavaggarwal.in@gmail.com", password="NewPassword123!"),
-        is_verified=True,
-    )
+    except Exception as e:
+        raise AuthenticationError("Could not validate credentials")
 
 
 async def get_current_active_user(

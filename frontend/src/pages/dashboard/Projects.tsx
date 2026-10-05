@@ -3,55 +3,12 @@
 // ============================================
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Search, Trash2, Loader2, X, FolderKanban } from 'lucide-react';
+import { Plus, Search, Trash2, Loader2, X, FolderKanban, FolderOpen } from 'lucide-react';
 import { ROUTES, PROJECT_STATUS_CONFIG } from '@/lib/constants';
 import { useProjects, useDeleteProject } from '@/hooks/use-projects';
 import type { ProjectStatus } from '@/types';
-
-const defaultDemoProjects = [
-  {
-    id: 'demo-1',
-    name: 'Expense Tracker App',
-    description: 'A full-stack expense tracking application with budget management and analytics.',
-    status: 'in_progress' as ProjectStatus,
-    progress: 65,
-    createdAt: '2026-08-01T12:00:00Z',
-    config: {
-      techStack: 'Fullstack',
-      language: 'TypeScript',
-      deployTarget: 'Docker',
-    },
-  },
-  {
-    id: 'demo-2',
-    name: 'E-Commerce Platform',
-    description: 'Modern e-commerce platform with payment processing and inventory management.',
-    status: 'planning' as ProjectStatus,
-    progress: 25,
-    createdAt: '2026-08-01T10:00:00Z',
-    config: {
-      techStack: 'Fullstack',
-      language: 'Python',
-      deployTarget: 'AWS',
-    },
-  },
-  {
-    id: 'demo-3',
-    name: 'Task Management Tool',
-    description: 'Collaborative task management with Kanban boards and team features.',
-    status: 'completed' as ProjectStatus,
-    progress: 100,
-    createdAt: '2026-07-28T09:00:00Z',
-    config: {
-      techStack: 'Frontend',
-      language: 'React',
-      deployTarget: 'Vercel',
-    },
-  },
-];
-
 function matchesSearchQuery(project: any, searchInput: string): boolean {
   if (!searchInput.trim()) return true;
 
@@ -86,43 +43,18 @@ function matchesSearchQuery(project: any, searchInput: string): boolean {
 }
 
 export default function Projects() {
+  const navigate = useNavigate();
   const { data: dbProjects = [], isLoading } = useProjects();
   const deleteMutation = useDeleteProject();
   const [search, setSearch] = useState('');
 
-  // Persist deleted project IDs in localStorage so deletion persists across browser refreshes
-  const [deletedIds, setDeletedIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('devforge_deleted_project_ids');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
-
-    const newDeleted = [...deletedIds, id];
-    setDeletedIds(newDeleted);
-    try {
-      localStorage.setItem('devforge_deleted_project_ids', JSON.stringify(newDeleted));
-    } catch {
-      // Ignore localStorage write errors
-    }
-
-    if (!id.startsWith('demo-')) {
-      deleteMutation.mutate(id);
-    }
+    deleteMutation.mutate(id);
   };
 
-  // Combine real database projects with initial default projects and filter out deleted IDs & apply search query
-  const availableProjects = [...dbProjects, ...defaultDemoProjects].filter(
-    (p) => !deletedIds.includes(p.id)
-  );
-
-  const filteredProjects = availableProjects.filter((p) =>
+  const filteredProjects = dbProjects.filter((p) =>
     matchesSearchQuery(p, search)
   );
 
@@ -131,18 +63,27 @@ export default function Projects() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Campaigns</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your AI-generated software projects.
+            Manage your AI-generated marketing campaigns.
           </p>
         </div>
-        <Link
-          to={ROUTES.NEW_PROJECT}
+        <button
+          onClick={(e) => {
+            const usage = JSON.parse(localStorage.getItem('devforge_lifetime_usage') || '{"projects":0,"tokens":0,"apiCalls":0}');
+            const isPro = JSON.parse(localStorage.getItem('devforge_auth') || '{}')?.state?.user?.role === 'pro';
+            if (!isPro && (usage.projects >= 3 || usage.tokens >= 50000 || usage.apiCalls >= 1000)) {
+              e.preventDefault();
+              alert('Quota Exceeded! Please upgrade your plan in the Billing section to create more campaigns.');
+            } else {
+              navigate(ROUTES.NEW_PROJECT);
+            }
+          }}
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-shadow"
         >
           <Plus className="h-4 w-4" />
-          New Project
-        </Link>
+          New Campaign
+        </button>
       </div>
 
       {/* Search Input Bar */}
@@ -176,29 +117,33 @@ export default function Projects() {
 
       {/* Projects Grid */}
       {filteredProjects.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-border/50 bg-card/40 p-12 text-center backdrop-blur-sm">
-          <FolderKanban className="h-12 w-12 text-muted-foreground/40 mb-3" />
-          <h3 className="text-base font-semibold">No projects found</h3>
-          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 py-20 text-center">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <FolderOpen className="h-6 w-6 text-primary" />
+          </div>
+          <h3 className="text-lg font-semibold">No campaigns found</h3>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             {search
-              ? `No projects matching "${search}". Try searching with different keywords.`
-              : 'You have no active projects. Create your first project to get started.'}
+              ? `We couldn't find any campaigns matching "${search}".`
+              : 'Get started by creating a new marketing campaign.'}
           </p>
-          {search ? (
+          {!search && (
             <button
-              onClick={() => setSearch('')}
-              className="mt-4 rounded-xl border border-border/50 bg-accent/50 px-4 py-2 text-xs font-semibold text-foreground hover:bg-accent transition-colors"
+              onClick={(e) => {
+                const usage = JSON.parse(localStorage.getItem('devforge_lifetime_usage') || '{"projects":0,"tokens":0,"apiCalls":0}');
+                const isPro = JSON.parse(localStorage.getItem('devforge_auth') || '{}')?.state?.user?.role === 'pro';
+            if (!isPro && (usage.projects >= 3 || usage.tokens >= 50000 || usage.apiCalls >= 1000)) {
+                  e.preventDefault();
+                  alert('Quota Exceeded! Please upgrade your plan in the Billing section to create more campaigns.');
+                } else {
+                  navigate(ROUTES.NEW_PROJECT);
+                }
+              }}
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
             >
-              Clear Search
+              <Plus className="h-4 w-4" />
+              New Campaign
             </button>
-          ) : (
-            <Link
-              to={ROUTES.NEW_PROJECT}
-              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              New Project
-            </Link>
           )}
         </div>
       ) : (
@@ -251,18 +196,18 @@ export default function Projects() {
                   <div className="mt-4">
                     <div className="flex items-center justify-between text-xs mb-1.5">
                       <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{project.progress ?? 10}%</span>
+                      <span className="font-medium">{Object.keys(project.config?.fileRegistry || {}).length > 0 ? 100 : (project.progress ?? 10)}%</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-accent">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 transition-all"
-                        style={{ width: `${project.progress ?? 10}%` }}
+                        style={{ width: `${Object.keys(project.config?.fileRegistry || {}).length > 0 ? 100 : (project.progress ?? 10)}%` }}
                       />
                     </div>
                   </div>
 
                   <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>10 agents active</span>
+                    <span>{3 - (project.config?.disabledAgents?.length || 0)} agent{3 - (project.config?.disabledAgents?.length || 0) !== 1 ? 's' : ''} active</span>
                     <span>{createdDate}</span>
                   </div>
                 </Link>

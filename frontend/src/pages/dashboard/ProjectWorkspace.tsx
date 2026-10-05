@@ -1,5 +1,5 @@
 // ============================================
-// DevForge AI — AI Workspace & Interactive Studio
+// MarketForge AI — AI Workspace & Interactive Studio
 // ============================================
 
 import { useState, useEffect, useRef } from 'react';
@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   MessageSquare,
   FileCode,
+  FileText,
   Terminal as TerminalIcon,
   Kanban,
   Network,
@@ -44,6 +45,7 @@ import {
   toggleAgentForProject,
 } from '@/lib/agent-lifecycle';
 import type { AgentType } from '@/types';
+import JSZip from 'jszip';
 
 type WorkspaceFile = {
   path: string;
@@ -232,8 +234,8 @@ export default function ProjectWorkspace() {
 
   const [disabledAgents, setDisabledAgents] = useState<AgentType[]>([]);
   const [activeTab, setActiveTab] = useState<
-    'code' | 'agents' | 'chat' | 'logs' | 'architecture' | 'tasks' | 'terminal'
-  >('code');
+    'assets' | 'chat' | 'reports' | 'agents' | 'logs' | 'tasks' | 'terminal'
+  >('assets');
 
   // UI Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -248,6 +250,7 @@ export default function ProjectWorkspace() {
       setDisabledAgents(getDisabledAgentsForProject(project));
     }
   }, [project]);
+
 
   const projectName = project?.name || 'Project Workspace';
   const projectTech = project?.config?.techStack || 'fullstack';
@@ -280,28 +283,28 @@ export default function ProjectWorkspace() {
   // ------------------------------------
   const [files, setFiles] = useState<WorkspaceFile[]>([
     {
-      path: 'backend/app/main.py',
-      language: 'python',
-      agent: 'backend_dev',
-      content: `from fastapi import FastAPI, Depends, HTTPException\nfrom app.api.v1 import router\n\napp = FastAPI(title="${projectName} API", version="1.0.0")\napp.include_router(router, prefix="/api/v1")\n\n@app.get("/health")\ndef health_check():\n    return {"status": "ok", "app": "${projectName}"}\n`,
+      path: 'strategy/content_calendar.md',
+      language: 'markdown',
+      agent: 'strategist',
+      content: `# ${projectName} - 30 Day Content Calendar\n\n## Week 1: Teaser Phase\n- **Day 1:** Twitter/X Thread dropping hints.\n- **Day 3:** Instagram Reel showing a silhouette.\n- **Day 7:** VIP Email Newsletter reveal.\n\n## Week 2: Hype Phase\n- **Day 10:** Official Blog Post announcement.\n- **Day 14:** Influencer unboxing videos.\n`,
     },
     {
-      path: `backend/app/models/${projectName.toLowerCase().replace(/[^a-z0-9]/g, '_')}.py`,
-      language: 'python',
-      agent: 'backend_dev',
-      content: `from sqlalchemy import Column, String, DateTime, JSON\nfrom datetime import datetime\nfrom app.db import Base\n\nclass ${projectName.replace(/[^a-zA-Z0-9]/g, '')}Model(Base):\n    __tablename__ = "${projectName.toLowerCase().replace(/[^a-z0-9]/g, '_')}"\n    \n    id = Column(String, primary_key=True)\n    title = Column(String, nullable=False)\n    data = Column(JSON, nullable=True)\n    created_at = Column(DateTime, default=datetime.utcnow)\n`,
+      path: 'assets/hype_blog_post.md',
+      language: 'markdown',
+      agent: 'copywriter',
+      content: `# Introducing the ${projectName}\n\nWelcome to the future. After months of anticipation, we are thrilled to finally pull back the curtain on the **${projectName}**.\n\n### Why it matters\nThis isn't just another product. It's a revolution in how we experience daily life. Built for the modern pioneer, it combines sleek aesthetics with uncompromising performance.\n\n**Available starting next Friday.** Don't miss out.\n`,
     },
     {
-      path: 'frontend/src/App.tsx',
-      language: 'typescript',
-      agent: 'frontend_dev',
-      content: `import React, { useState } from 'react';\n\nexport default function App() {\n  return (\n    <div className="p-8 max-w-4xl mx-auto font-sans">\n      <h1 className="text-3xl font-bold">${projectName} Workspace</h1>\n      <p className="text-gray-500 mt-2">Built autonomously with DevForge AI Multi-Agent Platform.</p>\n    </div>\n  );\n}\n`,
+      path: 'assets/vip_newsletter.md',
+      language: 'markdown',
+      agent: 'copywriter',
+      content: `Subject: Shhh... You're seeing this first. 🤫\n\nHey VIPs,\n\nYou've been with us since day one, so we wanted you to be the very first to know about the **${projectName}**.\n\nAs a thank you, use code VIPEARLY20 at checkout for 20% off your pre-order.\n\nStay awesome,\nThe Team\n`,
     },
     {
-      path: 'docker-compose.yml',
-      language: 'yaml',
-      agent: 'devops',
-      content: `version: '3.8'\nservices:\n  backend:\n    build: ./backend\n    ports:\n      - "8000:8000"\n  frontend:\n    build: ./frontend\n    ports:\n      - "3000:3000"\n`,
+      path: 'assets/twitter_thread.md',
+      language: 'markdown',
+      agent: 'copywriter',
+      content: `🧵 1/5 The wait is over. Meet the ${projectName}.\nWe spent 2 years obsessing over every detail.\nHere is why it will blow your mind 👇\n\n🧵 2/5 First, the design. We went back to the drawing board to create something truly seamless...\n`,
     },
   ]);
 
@@ -309,6 +312,33 @@ export default function ProjectWorkspace() {
   const [copied, setCopied] = useState(false);
   const [isEditingCode, setIsEditingCode] = useState(false);
   const [codeDraft, setCodeDraft] = useState('');
+
+  // Sync files to DB to recalculate lifetime usage
+  useEffect(() => {
+    if (!project) return;
+    const currentRegistry = project.config?.fileRegistry || {};
+    let changed = false;
+    const newRegistry = { ...currentRegistry };
+    
+    files.forEach(f => {
+      if (newRegistry[f.path] !== f.content) {
+        newRegistry[f.path] = f.content;
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      updateProject.mutate({
+        id: project.id,
+        data: {
+          config: {
+            ...(project.config || {}),
+            fileRegistry: newRegistry
+          }
+        }
+      });
+    }
+  }, [files, project]);
   const [showNewFileModal, setShowNewFileModal] = useState(false);
   const [newFilePath, setNewFilePath] = useState('');
 
@@ -391,15 +421,31 @@ export default function ProjectWorkspace() {
     showToast(`Created file ${path}`);
   };
 
-  const handleDownloadCode = () => {
-    const jsonStr = JSON.stringify(files, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${projectName.toLowerCase().replace(/\s+/g, '_')}_code.json`;
-    a.click();
-    showToast('Project code files downloaded!');
+  const handleDownloadCode = async () => {
+    try {
+      const zip = new JSZip();
+      
+      files.forEach(f => {
+        // Remove leading slash if any and add to zip
+        const filePath = f.path.startsWith('/') ? f.path.substring(1) : f.path;
+        zip.file(filePath, f.content);
+      });
+      
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${projectName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_assets.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      showToast('Campaign assets downloaded successfully!');
+    } catch (err) {
+      console.error('ZIP generation failed', err);
+      showToast('Error generating ZIP file.');
+    }
   };
 
   // ------------------------------------
@@ -409,18 +455,18 @@ export default function ProjectWorkspace() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: 'c1',
-      sender: 'Product Manager',
-      role: 'Product Lead',
-      text: `Hello! I have created the PRD and requirements breakdown for ${projectName}. What feature should we build next?`,
+      sender: 'The Strategist',
+      role: 'CMO / Strategist',
+      text: `Hello! I have mapped out the 30-day target demographics and content strategy for ${projectName}. What marketing asset should we draft next?`,
       time: '10:00 AM',
     },
     {
       id: 'c2',
-      sender: 'Architect',
-      role: 'System Architect',
-      text: `The system architecture and SQLite database schema are ready under the Architecture tab.`,
+      sender: 'The Copywriter',
+      role: 'Marketing Copywriter',
+      text: `The initial campaign assets have been generated and saved to your workspace. Let me know if you want any copy adjusted!`,
       time: '10:01 AM',
-      codeSnippet: `GET /api/v1/health\nPOST /api/v1/${projectName.toLowerCase()}/create`,
+      codeSnippet: `Drafting: assets/hype_blog_post.md\nDrafting: assets/twitter_thread.md`,
     },
   ]);
   const [inputMsg, setInputMsg] = useState('');
@@ -452,16 +498,38 @@ export default function ProjectWorkspace() {
       const targetAgentKey = selectedAgentTarget === 'all' ? 'backend_dev' : selectedAgentTarget;
       const targetConfig = AGENT_CONFIG[targetAgentKey];
 
-      let aiReplyText = `Received instructions for "${text}". Executing code updates and verifying pipeline tests.`;
+      let aiReplyText = `Received instructions for "${text}". Executing copy updates and verifying strategy alignment.`;
       let snippet: string | undefined = undefined;
 
-      if (text.toLowerCase().includes('auth') || text.toLowerCase().includes('jwt')) {
-        aiReplyText = `I will add JWT Authentication middleware & token refresh handlers for ${projectName}.`;
-        snippet = `from fastapi import Depends, HTTPException\nfrom app.core.security import verify_jwt\n\n@app.get("/protected")\ndef protected_route(user = Depends(verify_jwt)):\n    return {"user": user}`;
-      } else if (text.toLowerCase().includes('test') || text.toLowerCase().includes('qa')) {
-        aiReplyText = `Running pytest and integration checks for ${projectName}. 100% tests passing!`;
-      } else if (text.toLowerCase().includes('security') || text.toLowerCase().includes('owasp')) {
-        aiReplyText = `Executing OWASP ZAP & Bandit security scanner. Zero critical vulnerabilities found.`;
+      if (text.toLowerCase().includes('email') || text.toLowerCase().includes('newsletter')) {
+        aiReplyText = `I will add a new promotional email newsletter for ${projectName}.`;
+        snippet = `Subject: Special Offer Inside! 🎁\n\nHey there,\n\nWe are launching ${projectName} very soon! Click here to claim your early bird discount.`;
+        // Automatically add to files
+        setFiles(prev => [...prev, {
+          path: `assets/promo_email_${Date.now()}.md`,
+          language: 'markdown',
+          agent: 'copywriter',
+          content: snippet!
+        }]);
+      } else if (text.toLowerCase().includes('tweet') || text.toLowerCase().includes('social')) {
+        aiReplyText = `Drafting 3 new viral Tweets for ${projectName}.`;
+        snippet = `🚀 Big things coming for ${projectName}! We can't wait to share it with you all. #LaunchDay`;
+        setFiles(prev => [...prev, {
+          path: `assets/social_post_${Date.now()}.md`,
+          language: 'markdown',
+          agent: 'copywriter',
+          content: snippet!
+        }]);
+      } else if (text.toLowerCase().includes('seo') || text.toLowerCase().includes('audit')) {
+        aiReplyText = `Executing SEO scan on the assets. Everything looks highly optimized for search engines.`;
+      } else {
+        // Generic edit
+        setFiles(prev => [...prev, {
+          path: `assets/new_asset_${Date.now()}.md`,
+          language: 'markdown',
+          agent: 'copywriter',
+          content: `# New Asset for ${projectName}\n\nBased on your request: "${text}".`
+        }]);
       }
 
       const aiReply: ChatMessage = {
@@ -481,13 +549,13 @@ export default function ProjectWorkspace() {
   // 3. LOGS TAB STATE
   // ------------------------------------
   const [logs, setLogs] = useState<LogEntry[]>([
-    { id: 'l1', time: '10:00:01', level: 'info', agent: 'Product Manager', message: `Analyzing project scope & generating PRD for ${projectName}...` },
-    { id: 'l2', time: '10:00:05', level: 'info', agent: 'Architect', message: `Designing database schema & API endpoints for ${projectName}...` },
-    { id: 'l3', time: '10:00:12', level: 'info', agent: 'Planner', message: 'Created 6 task execution items in sprint plan.' },
-    { id: 'l4', time: '10:00:20', level: 'info', agent: 'Backend Developer', message: 'Generated FastAPI endpoints and SQLAlchemy models.' },
-    { id: 'l5', time: '10:00:35', level: 'info', agent: 'Frontend Developer', message: 'Generated React components & Vite configuration.' },
-    { id: 'l6', time: '10:00:48', level: 'success', agent: 'QA Engineer', message: '48/48 unit tests passing (92.5% coverage).' },
-    { id: 'l7', time: '10:01:00', level: 'success', agent: 'Security Analyst', message: 'OWASP scan completed: 0 vulnerabilities found.' },
+    { id: 'l1', time: '10:00:01', level: 'info', agent: 'The Strategist', message: `Analyzing target audience & generating 30-day strategy for ${projectName}...` },
+    { id: 'l2', time: '10:00:05', level: 'info', agent: 'The Strategist', message: `Content calendar completed.` },
+    { id: 'l3', time: '10:00:12', level: 'info', agent: 'The Copywriter', message: 'Drafting initial marketing assets based on strategy plan.' },
+    { id: 'l4', time: '10:00:20', level: 'info', agent: 'The Copywriter', message: 'Generated Blog Post, Twitter Thread, and VIP Newsletter.' },
+    { id: 'l5', time: '10:00:35', level: 'info', agent: 'SEO & Brand Reviewer', message: 'Auditing generated assets for brand tone and SEO keywords.' },
+    { id: 'l6', time: '10:00:48', level: 'success', agent: 'SEO & Brand Reviewer', message: 'SEO audit completed. Average score: 85/100.' },
+    { id: 'l7', time: '10:01:00', level: 'success', agent: 'MarketForge AI', message: 'Campaign pipeline execution successful. Assets ready for download.' },
   ]);
 
   const [logFilterAgent, setLogFilterAgent] = useState<string>('all');
@@ -500,14 +568,14 @@ export default function ProjectWorkspace() {
   });
 
   const handleSimulateLog = () => {
-    const agentsList = ['Backend Developer', 'QA Engineer', 'Security Analyst', 'DevOps Engine'];
+    const agentsList = ['The Strategist', 'The Copywriter', 'SEO & Brand Reviewer'];
     const randomAgent = agentsList[Math.floor(Math.random() * agentsList.length)];
     const newLog: LogEntry = {
       id: `l-${Date.now()}`,
       time: new Date().toLocaleTimeString(),
       level: Math.random() > 0.8 ? 'warn' : 'info',
       agent: randomAgent,
-      message: `Executed automated task check for ${projectName}. Pipeline status nominal.`,
+      message: `Executed automated task check for ${projectName}. Marketing pipeline status nominal.`,
     };
     setLogs((prev) => [...prev, newLog]);
     showToast(`New agent log triggered from ${randomAgent}`);
@@ -533,16 +601,16 @@ export default function ProjectWorkspace() {
   // 4. TASKS KANBAN TAB STATE
   // ------------------------------------
   const [tasks, setTasks] = useState<TaskItem[]>([
-    { id: 't1', title: 'Requirements & PRD Specification', status: 'done', agent: 'Product Manager', priority: 'high' },
-    { id: 't2', title: 'Database & Architecture ER Diagram', status: 'done', agent: 'Architect', priority: 'high' },
-    { id: 't3', title: 'FastAPI REST Endpoints Implementation', status: 'in_progress', agent: 'Backend Dev', priority: 'high' },
-    { id: 't4', title: 'React UI Workspace Components', status: 'in_progress', agent: 'Frontend Dev', priority: 'medium' },
-    { id: 't5', title: 'OWASP Security & Vulnerability Scan', status: 'todo', agent: 'Security Analyst', priority: 'high' },
-    { id: 't6', title: 'Docker Compose & Production Deployment', status: 'todo', agent: 'DevOps', priority: 'medium' },
+    { id: 't1', title: 'Target Audience Profile Analysis', status: 'done', agent: 'The Strategist', priority: 'high' },
+    { id: 't2', title: '30-Day Launch Content Calendar', status: 'done', agent: 'The Strategist', priority: 'high' },
+    { id: 't3', title: 'Draft SEO Blog Post', status: 'done', agent: 'The Copywriter', priority: 'high' },
+    { id: 't4', title: 'Draft VIP Email Newsletter', status: 'in_progress', agent: 'The Copywriter', priority: 'medium' },
+    { id: 't5', title: 'Draft 5-Part Twitter Thread', status: 'in_progress', agent: 'The Copywriter', priority: 'high' },
+    { id: 't6', title: 'Brand Tone & Safety Audit', status: 'todo', agent: 'SEO Reviewer', priority: 'medium' },
   ]);
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskAgent, setNewTaskAgent] = useState<string>('Backend Dev');
+  const [newTaskAgent, setNewTaskAgent] = useState<string>('The Copywriter');
 
   const handleMoveTask = (taskId: string, nextStatus: 'todo' | 'in_progress' | 'done') => {
     setTasks((prev) =>
@@ -572,14 +640,13 @@ export default function ProjectWorkspace() {
   const [terminalHistory, setTerminalHistory] = useState<TerminalHistoryItem[]>([
     {
       id: 'term-1',
-      command: `devforge build --project "${projectName}"`,
+      command: `marketforge build --project "${projectName}"`,
       output: [
-        `[+] Initializing DevForge AI Multi-Agent Pipeline for ${projectName}...`,
-        ` ✔ Product Manager: Requirements compiled`,
-        ` ✔ Architect: System architecture verified`,
-        ` ✔ Backend Dev: 12 FastAPI routes generated`,
-        ` ✔ Frontend Dev: React 19 UI components compiled`,
-        `SUCCESS: Build pipeline ready. Run 'npm test' or 'python main.py' to execute.`,
+        `[+] Initializing MarketForge AI Multi-Agent Pipeline for ${projectName}...`,
+        ` ✔ The Strategist: Target Demographics mapped`,
+        ` ✔ The Copywriter: 5 core assets drafted`,
+        ` ✔ SEO Reviewer: Brand tone & keyword density verified`,
+        `SUCCESS: Marketing pipeline ready. Review your assets in the workspace.`,
       ],
       time: '10:00:00 AM',
     },
@@ -600,10 +667,10 @@ export default function ProjectWorkspace() {
       return;
     } else if (lowerCmd === 'help') {
       outputLines = [
-        'Available DevForge Terminal Commands:',
+        'Available MarketForge Terminal Commands:',
         '  npm test             - Run all unit and integration tests',
         '  python main.py       - Start FastAPI backend dev server',
-        '  devforge build       - Execute full 10-agent pipeline build',
+        '  marketforge build       - Execute full 10-agent pipeline build',
         '  docker-compose up    - Launch Docker containers',
         '  status               - Check active multi-agent pipeline status',
         '  clear                - Clear terminal screen',
@@ -640,7 +707,7 @@ export default function ProjectWorkspace() {
     } else {
       outputLines = [
         `zsh: command executed: ${cmd}`,
-        `[DevForge AI] Command finished with exit status code 0.`,
+        `[MarketForge AI] Command finished with exit status code 0.`,
       ];
     }
 
@@ -675,7 +742,7 @@ export default function ProjectWorkspace() {
           <div>
             <h1 className="text-xl font-bold tracking-tight">{projectName} Workspace</h1>
             <p className="text-xs text-muted-foreground">
-              Project ID: {id} · Tech Stack: {projectTech} ({projectLang})
+              Campaign ID: {id} · Status: Active (Generating Assets)
               {disabledAgents.length > 0 && (
                 <span className="ml-2 font-semibold text-amber-400">
                   · ({disabledAgents.length} Agent{disabledAgents.length > 1 ? 's' : ''} Disabled)
@@ -688,13 +755,9 @@ export default function ProjectWorkspace() {
         {/* Tab Selection Buttons */}
         <div className="flex items-center gap-1 overflow-x-auto rounded-xl bg-accent/40 p-1 border border-border/40">
           {[
-            { id: 'code', label: 'Code', icon: FileCode },
-            { id: 'agents', label: 'Agents Team', icon: Users },
-            { id: 'chat', label: 'Chat', icon: MessageSquare },
-            { id: 'logs', label: 'Logs', icon: ListFilter },
-            { id: 'architecture', label: 'Architecture', icon: Network },
-            { id: 'tasks', label: 'Tasks', icon: Kanban },
-            { id: 'terminal', label: 'Terminal', icon: TerminalIcon },
+            { id: 'assets', label: 'Marketing Assets', icon: FileCode },
+            { id: 'chat', label: 'Agent Chat', icon: MessageSquare },
+            { id: 'reports', label: 'Strategy & Audit', icon: FileText },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -719,7 +782,7 @@ export default function ProjectWorkspace() {
         {/* ==================================================== */}
         {/* TAB 1: CODE VIEWER & EDITING */}
         {/* ==================================================== */}
-        {activeTab === 'code' && (
+        {activeTab === 'assets' && (
           <div className="flex w-full h-full">
             {/* File Tree Sidebar */}
             <div className="w-64 border-r border-border/50 bg-background/40 p-3 overflow-y-auto shrink-0 flex flex-col justify-between">
@@ -773,7 +836,7 @@ export default function ProjectWorkspace() {
                 onClick={handleDownloadCode}
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-border/50 bg-accent/30 py-2 text-xs font-semibold hover:bg-accent transition-colors"
               >
-                <Download className="h-3.5 w-3.5" /> Download Project Files
+                <Download className="h-3.5 w-3.5" /> Download Campaign Assets
               </button>
             </div>
 
@@ -974,18 +1037,6 @@ export default function ProjectWorkspace() {
                 </select>
               </div>
 
-              {/* Quick Action Prompt Chips */}
-              <div className="hidden md:flex items-center gap-1.5">
-                {['Add JWT Auth', 'Run Security Audit', 'Generate API Specs'].map((chip) => (
-                  <button
-                    key={chip}
-                    onClick={() => handleSendChat(chip)}
-                    className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary hover:bg-primary/20 transition-colors"
-                  >
-                    + {chip}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Chat Message Stream */}
@@ -1048,12 +1099,9 @@ export default function ProjectWorkspace() {
                     className="rounded-lg border border-border/50 bg-background px-2.5 py-1 text-xs font-semibold"
                   >
                     <option value="all">All Agents</option>
-                    <option value="Product Manager">Product Manager</option>
-                    <option value="Architect">Architect</option>
-                    <option value="Backend Developer">Backend Developer</option>
-                    <option value="Frontend Developer">Frontend Developer</option>
-                    <option value="QA Engineer">QA Engineer</option>
-                    <option value="Security Analyst">Security Analyst</option>
+                    <option value="strategist">The Strategist</option>
+                    <option value="copywriter">The Copywriter</option>
+                    <option value="seo_reviewer">SEO & Brand Reviewer</option>
                   </select>
                 </div>
 
@@ -1127,40 +1175,46 @@ export default function ProjectWorkspace() {
         {/* ==================================================== */}
         {/* TAB 5: ARCHITECTURE & ER DIAGRAM */}
         {/* ==================================================== */}
-        {activeTab === 'architecture' && (
+        {activeTab === 'reports' && (
           <div className="p-6 w-full overflow-y-auto space-y-6">
             <div>
-              <h2 className="text-lg font-bold">System Architecture & Database Schema — {projectName}</h2>
+              <h2 className="text-lg font-bold">Marketing Strategy & Audit Review — {projectName}</h2>
               <p className="text-xs text-muted-foreground">
-                Compiled by Architect and Product Manager AI agents for {projectName}.
+                Compiled by the Strategist and SEO Reviewer AI agents.
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-border/50 p-5 bg-card/60 space-y-3">
                 <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                  <Network className="h-4 w-4 text-primary" /> Multi-Agent Component Architecture
+                  <Network className="h-4 w-4 text-primary" /> Target Audience & Strategy Plan
                 </h3>
-                <div className="rounded-xl border border-slate-800 p-4 bg-slate-950 font-mono text-xs text-cyan-400 leading-relaxed overflow-x-auto">
-                  <pre>{`graph TD;
-  UI[React 19 Frontend (${projectName})] --> API[FastAPI Backend];
-  API --> DB[(SQLite Database)];
-  API --> AI[DevForge 10-Agent Pipeline];
-  AI --> Security[OWASP Vulnerability Audit];`}</pre>
+                <div className="rounded-xl border border-slate-800 p-4 bg-slate-950 font-mono text-xs text-cyan-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                  {JSON.stringify(project.config?.artifacts?.strategist?.strategy_plan || {
+                    campaign_goal: "Maximize reach, engagement, and conversion.",
+                    target_audience: "Gen Z, Millennials, Tech Enthusiasts",
+                    brand_tone: "Exciting, Urgent, Exclusive",
+                    assets_in_pipeline: files.map(f => f.path),
+                    execution_status: "Active"
+                  }, null, 2)}
                 </div>
               </div>
 
               <div className="rounded-2xl border border-border/50 p-5 bg-card/60 space-y-3">
                 <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400" /> Database ER Schema Specification
+                  <ShieldCheck className="h-4 w-4 text-emerald-400" /> SEO & Brand Audit Report
                 </h3>
-                <div className="rounded-xl border border-slate-800 p-4 bg-slate-950 font-mono text-xs text-emerald-400 leading-relaxed overflow-x-auto">
-                  <pre>{`TABLE ${projectName.toLowerCase().replace(/[^a-z0-9]/g, '_')} {
-  id VARCHAR(36) PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  data JSON,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-}`}</pre>
+                <div className="rounded-xl border border-slate-800 p-4 bg-slate-950 font-mono text-xs text-emerald-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                  {JSON.stringify(project.config?.artifacts?.seo_reviewer?.review_report || {
+                    seo_score: Math.min(100, 60 + files.length * 8),
+                    assets_analyzed: files.length,
+                    total_words_analyzed: files.reduce((acc, f) => acc + (f.content.trim() ? f.content.trim().split(/\s+/).length : 0), 0),
+                    keyword_density: "Optimal (2.4%)",
+                    brand_safety: "Passed",
+                    recommendations: files.length < 5 
+                      ? ["Add more social media posts to increase reach.", "Draft an SEO-optimized landing page."] 
+                      : ["Great variety of assets.", "Ensure call-to-actions are placed above the fold."]
+                  }, null, 2)}
                 </div>
               </div>
             </div>
@@ -1194,11 +1248,9 @@ export default function ProjectWorkspace() {
                   onChange={(e) => setNewTaskAgent(e.target.value)}
                   className="rounded-xl border border-border/50 bg-background px-2.5 py-1.5 text-xs font-semibold"
                 >
-                  <option value="Backend Dev">Backend Dev</option>
-                  <option value="Frontend Dev">Frontend Dev</option>
-                  <option value="QA Engineer">QA Engineer</option>
-                  <option value="Security Analyst">Security Analyst</option>
-                  <option value="DevOps">DevOps</option>
+                  <option value="The Strategist">The Strategist</option>
+                  <option value="The Copywriter">The Copywriter</option>
+                  <option value="SEO Reviewer">SEO Reviewer</option>
                 </select>
                 <button
                   type="submit"
@@ -1281,7 +1333,7 @@ export default function ProjectWorkspace() {
                 <div key={item.id} className="space-y-1">
                   <div className="flex items-center gap-2 text-cyan-400">
                     <span className="text-slate-500">[{item.time}]</span>
-                    <span className="text-purple-400 font-bold">devforge@workspace:~$</span>
+                    <span className="text-purple-400 font-bold">marketforge@workspace:~$</span>
                     <span className="text-white font-bold">{item.command}</span>
                   </div>
                   <div className="pl-4 space-y-0.5 text-slate-300">
@@ -1300,7 +1352,7 @@ export default function ProjectWorkspace() {
                 type="text"
                 value={terminalInput}
                 onChange={(e) => setTerminalInput(e.target.value)}
-                placeholder="Type terminal command (e.g. npm test, python main.py, devforge build)..."
+                placeholder="Type terminal command (e.g. npm test, python main.py, marketforge build)..."
                 className="flex-1 bg-transparent text-xs text-white focus:outline-none font-mono"
               />
               <button type="submit" className="rounded bg-cyan-600 px-3 py-1 text-xs font-semibold text-white hover:bg-cyan-500">

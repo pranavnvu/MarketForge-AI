@@ -10,11 +10,15 @@ logger = structlog.get_logger(__name__)
 class AgentOutput(BaseModel):
     agent_type: str
     agent_name: str
-    status: str = "completed"  # completed, failed, warning
+    status: str = "completed"  # completed, failed, warning, retrying
     summary: str
     artifacts: Dict[str, Any] = {}
+    files_created: List[Dict[str, Any]] = []
     logs: List[str] = []
     execution_time_seconds: float = 0.0
+    retry_count: int = 0
+    error: Optional[str] = None
+    task_updates: List[Dict[str, Any]] = []
 
 
 class BaseAgent(abc.ABC):
@@ -38,3 +42,4 @@ class BaseAgent(abc.ABC):
         else:
             logger.info(formatted)
         return formatted
+

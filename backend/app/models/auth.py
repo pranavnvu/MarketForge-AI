@@ -44,3 +44,17 @@ class EmailVerificationToken(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     token: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+class ApiKey(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "api_keys"
+
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    prefix: Mapped[str] = mapped_column(String(10), nullable=False) # e.g. "df_prod_sk"
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    last_used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped["User"] = relationship("User")

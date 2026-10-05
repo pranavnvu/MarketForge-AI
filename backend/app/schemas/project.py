@@ -32,3 +32,22 @@ class ProjectResponse(ProjectBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AgentNodeRunRequest(BaseModel):
+    agent_key: str
+
+
+class AgentSwarmChatRequest(BaseModel):
+    agent_key: Optional[str] = "all"
+    message: str
+
+
+class FileConsistencyCheckResponse(BaseModel):
+    project_id: UUID
+    api_contract_matched: bool
+    orm_schemas_aligned: bool
+    auth_tokens_verified: bool
+    total_files: int
+    files_synced: bool
+

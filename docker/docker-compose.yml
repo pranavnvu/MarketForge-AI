@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai_software_team_postgres
+    environment:
+      POSTGRES_DB: ai_software_team
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai_software_team_redis
+    ports:
+      - "6379:6379"
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai_software_team_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  project_manager:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.project_manager
+    container_name: agent_project_manager
+    ports:
+      - "8001:8001"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.1:8b
+    depends_on:
+      - ollama
+
+  database_agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.database_agent
+    container_name: agent_database
+    ports:
+      - "8002:8002"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.1:8b
+    depends_on:
+      - ollama
+
+  backend_agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend_agent
+    container_name: agent_backend
+    ports:
+      - "8003:8003"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.1:8b
+    depends_on:
+      - ollama
+
+  frontend_agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend_agent
+    container_name: agent_frontend
+    ports:
+      - "8004:8004"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.1:8b
+    depends_on:
+      - ollama
+
+  qa_agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.qa_agent
+    container_name: agent_qa
+    ports:
+      - "8005:8005"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.1:8b
+    depends_on:
+      - ollama
+
+  documentation_agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.documentation_agent
+    container_name: agent_documentation
+    ports:
+      - "8006:8006"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.1:8b
+    depends_on:
+      - ollama
+
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.orchestrator
+    container_name: orchestrator_service
+    ports:
+      - "8000:8000"
+    environment:
+      - PROJECT_MANAGER_URL=http://project_manager:8001
+      - DATABASE_AGENT_URL=http://database_agent:8002
+      - BACKEND_AGENT_URL=http://backend_agent:8003
+      - FRONTEND_AGENT_URL=http://frontend_agent:8004
+      - QA_AGENT_URL=http://qa_agent:8005
+      - DOCUMENTATION_AGENT_URL=http://documentation_agent:8006
+    depends_on:
+      - project_manager
+      - database_agent
+      - backend_agent
+      - frontend_agent
+      - qa_agent
+      - documentation_agent
+
+volumes:
+  ollama_data:

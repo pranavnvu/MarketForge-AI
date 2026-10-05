@@ -6,16 +6,10 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User as UserIcon,
-  Bell,
-  Shield,
   Palette,
-  Globe,
   Trash2,
   CheckCircle2,
   Camera,
-  Key,
-  Eye,
-  EyeOff,
   AlertTriangle,
   Sparkles,
   MapPin,
@@ -27,16 +21,13 @@ import {
   X,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
-import { useUpdateProfile, useChangePassword, useDeleteAccount } from '@/hooks/use-auth';
+import { useUpdateProfile, useDeleteAccount } from '@/hooks/use-auth';
 import { useUIStore } from '@/stores/ui-store';
 import { cleanImageUrl, isDirectImage } from '@/lib/avatar-helper';
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: UserIcon },
-  { id: 'security', label: 'Security', icon: Shield },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'integrations', label: 'Integrations', icon: Globe },
 ];
 
 const avatarPresets = [
@@ -51,7 +42,6 @@ const avatarPresets = [
 export default function Settings() {
   const { user } = useAuthStore();
   const updateProfile = useUpdateProfile();
-  const changePassword = useChangePassword();
   const deleteAccount = useDeleteAccount();
   const { theme, setTheme } = useUIStore();
 
@@ -60,25 +50,17 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('profile');
 
   // Form State initialized with real User values
-  const [name, setName] = useState(user?.name || 'Pranav Aggarwal');
-  const [email, setEmail] = useState(user?.email || 'pranavaggarwal.in@gmail.com');
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [avatarVal, setAvatarVal] = useState(user?.avatar || '⚡');
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [pictureUrlInput, setPictureUrlInput] = useState('');
 
-  const [jobTitle, setJobTitle] = useState(user?.jobTitle || 'Lead AI Engineering Architect');
-  const [bio, setBio] = useState(
-    user?.bio || 'Building autonomous AI multi-agent software systems with DevForge AI.'
-  );
-  const [location, setLocation] = useState(user?.location || 'New Delhi, India');
-  const [website, setWebsite] = useState(user?.website || 'https://pranavaggarwal.in');
-  const [github, setGithub] = useState(user?.github || 'pranavaggarwal');
-
-  // Security Form State
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [jobTitle, setJobTitle] = useState(user?.jobTitle || '');
+  const [bio, setBio] = useState(user?.bio || '');
+  const [location, setLocation] = useState(user?.location || '');
+  const [website, setWebsite] = useState(user?.website || '');
+  const [github, setGithub] = useState(user?.github || '');
 
   // UI Toast State
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -175,28 +157,6 @@ export default function Settings() {
       showToast('Profile updated successfully!');
     } catch (err: any) {
       showToast(err?.message || 'Failed to update profile', true);
-    }
-  };
-
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentPassword || !newPassword) {
-      showToast('Please enter your current and new password.', true);
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      showToast('New passwords do not match.', true);
-      return;
-    }
-    try {
-      await changePassword.mutateAsync({ currentPassword, newPassword });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      showToast('Password changed successfully!');
-    } catch (err: any) {
-      const msg = err?.response?.data?.detail || err?.message || 'Failed to change password.';
-      showToast(typeof msg === 'string' ? msg : 'Failed to change password.', true);
     }
   };
 
@@ -316,9 +276,13 @@ export default function Settings() {
                 <div className="flex-1 min-w-0 space-y-2">
                   <div className="flex items-center gap-2.5">
                     <h2 className="text-xl font-bold truncate">{name || 'User Profile'}</h2>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 border border-purple-500/30 px-2.5 py-0.5 text-xs font-semibold text-purple-400">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold border ${
+                      user?.role === 'pro' 
+                        ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' 
+                        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                    }`}>
                       <Sparkles className="h-3 w-3" />
-                      Pro Account
+                      {user?.role === 'pro' ? 'Pro Account' : 'Starter Account'}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{email}</p>
@@ -564,104 +528,7 @@ export default function Settings() {
             </motion.div>
           )}
 
-          {/* TAB 2: SECURITY */}
-          {activeTab === 'security' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-              <div>
-                <h2 className="text-lg font-bold">Security & Password</h2>
-                <p className="text-xs text-muted-foreground">
-                  Update your password and configure account security options.
-                </p>
-              </div>
-
-              <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Current Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Enter current password"
-                      className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 pr-10 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    New Password
-                  </label>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="At least 8 characters"
-                    className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter new password"
-                    className="w-full rounded-xl border border-border/50 bg-background px-3.5 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={changePassword.isPending}
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50"
-                >
-                  <Key className="h-4 w-4" />
-                  {changePassword.isPending ? 'Updating...' : 'Update Password'}
-                </button>
-              </form>
-            </motion.div>
-          )}
-
-          {/* TAB 3: NOTIFICATIONS */}
-          {activeTab === 'notifications' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-              <div>
-                <h2 className="text-lg font-bold">Notification Preferences</h2>
-                <p className="text-xs text-muted-foreground">Control how and when DevForge AI contacts you.</p>
-              </div>
-
-              <div className="space-y-4 max-w-lg">
-                {[
-                  { id: 'builds', title: 'Project Execution Complete', desc: 'Email notification when multi-agent build finishes.' },
-                  { id: 'security', title: 'Security & Secret Alerts', desc: 'Alerts when OWASP vulnerability scanner finds secrets.' },
-                  { id: 'newsletter', title: 'Product & Agent Updates', desc: 'Monthly updates on new AI agents and platform features.' },
-                ].map((item) => (
-                  <div key={item.id} className="flex items-center justify-between rounded-xl border border-border/40 p-4 bg-background/40">
-                    <div>
-                      <p className="font-semibold text-xs">{item.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
-                    </div>
-                    <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* TAB 4: APPEARANCE */}
+          {/* TAB: APPEARANCE */}
           {activeTab === 'appearance' && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
               <div>
@@ -682,35 +549,6 @@ export default function Settings() {
                   >
                     {t === 'dark' ? '🌙 Dark Mode' : t === 'light' ? '☀️ Light Mode' : '🖥️ System Preference'}
                   </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* TAB 5: INTEGRATIONS */}
-          {activeTab === 'integrations' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-              <div>
-                <h2 className="text-lg font-bold">Integrations & Connected Services</h2>
-                <p className="text-xs text-muted-foreground">Connect external services to your DevForge workspace.</p>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[
-                  { name: 'GitHub', desc: 'Push code directly to repositories.', connected: true },
-                  { name: 'Vercel', desc: 'Deploy web applications seamlessly.', connected: false },
-                  { name: 'Docker Hub', desc: 'Push containerized microservices.', connected: false },
-                  { name: 'AWS Cloud', desc: 'Deploy cloud infrastructure.', connected: false },
-                ].map((item) => (
-                  <div key={item.name} className="flex items-center justify-between rounded-xl border border-border/40 p-4 bg-background/40">
-                    <div>
-                      <p className="font-semibold text-xs">{item.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
-                    </div>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${item.connected ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-accent text-muted-foreground'}`}>
-                      {item.connected ? 'Connected' : 'Connect'}
-                    </span>
-                  </div>
                 ))}
               </div>
             </motion.div>

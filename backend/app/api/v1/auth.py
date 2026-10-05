@@ -99,6 +99,16 @@ async def get_me(
     return UserResponse.model_validate(current_user)
 
 
+@router.delete("/me", response_model=MessageResponse)
+async def delete_me(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+):
+    user_service = UserService(db)
+    await user_service.delete_user(current_user)
+    return MessageResponse(message="Account and all associated data wiped successfully.")
+
+
 @router.put("/me", response_model=UserResponse)
 async def update_me(
     req: UserUpdate,

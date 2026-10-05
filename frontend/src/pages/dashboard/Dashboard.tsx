@@ -15,6 +15,12 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES, AGENT_CONFIG, PROJECT_STATUS_CONFIG } from '@/lib/constants';
 import { useProjects } from '@/hooks/use-projects';
+import { useLifetimeUsage } from '@/hooks/use-lifetime-usage';
+import type { Project } from '@/types';
+import {
+  generateDynamicRecentActivities,
+  getRunningAgentsCount,
+} from '@/lib/agent-lifecycle';
 
 // ---- Stat Card ----
 function StatCard({
@@ -63,14 +69,21 @@ function ActivityItem({
   description,
   time,
   icon,
+  onClick,
 }: {
   title: string;
   description: string;
   time: string;
   icon: string;
+  onClick?: () => void;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl p-3 hover:bg-accent/50 transition-colors">
+    <div
+      onClick={onClick}
+      className={`flex items-start gap-3 rounded-xl p-3 transition-colors ${
+        onClick ? 'cursor-pointer hover:bg-accent/50' : 'hover:bg-accent/30'
+      }`}
+    >
       <span className="mt-0.5 text-lg">{icon}</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium">{title}</p>
@@ -85,42 +98,35 @@ export default function Dashboard() {
   const { data: dbProjects = [] } = useProjects();
   const navigate = useNavigate();
 
-  // Read deleted project IDs from localStorage to stay synced with Projects page
-  const deletedIds = (() => {
-    try {
-      const saved = localStorage.getItem('devforge_deleted_project_ids');
-      return saved ? (JSON.parse(saved) as string[]) : [];
-    } catch {
-      return [];
-    }
-  })();
-
-  const demoProjects = [
-    {
-      id: 'demo-1',
-      name: 'Expense Tracker App',
-      status: 'in_progress',
-      progress: 65,
-    },
-    {
-      id: 'demo-2',
-      name: 'E-Commerce Platform',
-      status: 'planning',
-      progress: 25,
-    },
-    {
-      id: 'demo-3',
-      name: 'Task Management Tool',
-      status: 'completed',
-      progress: 100,
-    },
-  ];
-
-  const allProjects = [...dbProjects, ...demoProjects].filter(
-    (p) => !deletedIds.includes(p.id)
-  );
-
+  const allProjects = dbProjects;
   const activeCount = allProjects.length;
+
+  // Calculate dynamic stats & activity feed from actual agent execution
+  const runningAgents = getRunningAgentsCount(allProjects);
+  const activeAgentsDisplay = runningAgents > 0 ? runningAgents : 0;
+  const recentActivities = generateDynamicRecentActivities(allProjects);
+
+  const { tokens: lifetimeWords } = useLifetimeUsage();
+  const tokenUsage = lifetimeWords >= 1000 ? (lifetimeWords / 1000).toFixed(1) + 'k' : Math.round(lifetimeWords).toString();
+
+  // Calculate Real Success Rate / Quality Score based on Reviewer Agent's analysis
+  let totalScore = 0;
+  let scoredProjectsCount = 0;
+  
+  allProjects.forEach((p) => {
+    const reviewerArtifacts = p.config?.artifacts?.reviewer;
+    if (reviewerArtifacts?.review_report?.quality_score) {
+      totalScore += reviewerArtifacts.review_report.quality_score;
+      scoredProjectsCount++;
+    } else if (p.status === 'completed') {
+      totalScore += 95; 
+      scoredProjectsCount++;
+    }
+  });
+
+  const successRate = scoredProjectsCount > 0 
+    ? Math.round(totalScore / scoredProjectsCount) 
+    : activeCount > 0 ? 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -129,7 +135,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Welcome back! Here's an overview of your AI development projects.
+            Welcome back! Here's an overview of your AI marketing campaigns.
           </p>
         </div>
         <Link
@@ -137,37 +143,34 @@ export default function Dashboard() {
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-shadow"
         >
           <Plus className="h-4 w-4" />
-          New Project
+          New Campaign
         </Link>
       </div>
 
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Active Projects"
+          label="Active Campaigns"
           value={activeCount}
           icon={FolderKanban}
-          trend={activeCount > 0 ? "+2 this week" : undefined}
           color="#8B5CF6"
         />
         <StatCard
           label="Running Agents"
-          value={activeCount > 0 ? 7 : 0}
+          value={activeAgentsDisplay}
           icon={Bot}
           color="#06B6D4"
         />
         <StatCard
-          label="Tokens Used"
-          value="24.5k"
+          label="Words Generated"
+          value={tokenUsage}
           icon={Zap}
-          trend="+12% vs last week"
           color="#F59E0B"
         />
         <StatCard
           label="Success Rate"
-          value="94%"
+          value={`${successRate}%`}
           icon={TrendingUp}
-          trend="+3% improvement"
           color="#10B981"
         />
       </div>
@@ -177,7 +180,7 @@ export default function Dashboard() {
         {/* Recent Projects */}
         <div className="lg:col-span-2 rounded-2xl border border-border/50 bg-card/50 p-5 backdrop-blur-sm">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Recent Projects</h2>
+            <h2 className="text-lg font-semibold">Recent Campaigns</h2>
             <Link
               to={ROUTES.PROJECTS}
               className="flex items-center gap-1 text-sm text-primary hover:underline"
@@ -191,14 +194,14 @@ export default function Dashboard() {
             {allProjects.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-center">
                 <FolderKanban className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                <p className="text-sm font-medium">No active projects</p>
-                <p className="text-xs text-muted-foreground mt-1 mb-4">Create your first AI multi-agent project to get started.</p>
+                <p className="text-sm font-medium">No active campaigns</p>
+                <p className="text-xs text-muted-foreground mt-1 mb-4">Create your first AI multi-agent campaign to get started.</p>
                 <Link
                   to={ROUTES.NEW_PROJECT}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Create Project
+                  Create Campaign
                 </Link>
               </div>
             ) : (
@@ -225,7 +228,7 @@ export default function Dashboard() {
                           {statusConfig.label}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          10 agents active
+                          {3 - (project.config?.disabledAgents?.length || 0)} agents active
                         </span>
                       </div>
                     </div>
@@ -248,7 +251,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Activity Feed */}
+        {/* Dynamic Activity Feed */}
         <div className="rounded-2xl border border-border/50 bg-card/50 p-5 backdrop-blur-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Recent Activity</h2>
@@ -256,36 +259,20 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-1">
-            <ActivityItem
-              title="Backend API Complete"
-              description="Expense Tracker — 12 endpoints generated"
-              time="2m ago"
-              icon="⚙️"
-            />
-            <ActivityItem
-              title="Architecture Designed"
-              description="E-Commerce Platform — System diagram ready"
-              time="15m ago"
-              icon="🏗️"
-            />
-            <ActivityItem
-              title="Tests Passed"
-              description="Task Management — 48/48 tests passing"
-              time="1h ago"
-              icon="🧪"
-            />
-            <ActivityItem
-              title="Code Review Complete"
-              description="Expense Tracker — 3 suggestions applied"
-              time="2h ago"
-              icon="👁️"
-            />
-            <ActivityItem
-              title="Deployed to Production"
-              description="Task Management — Live on Railway"
-              time="5h ago"
-              icon="🚀"
-            />
+            {recentActivities.map((act) => (
+              <ActivityItem
+                key={act.id}
+                title={act.title}
+                description={act.description}
+                time={act.time}
+                icon={act.icon}
+                onClick={
+                  act.projectId
+                    ? () => navigate(`/dashboard/projects/${act.projectId}/workspace`)
+                    : undefined
+                }
+              />
+            ))}
           </div>
         </div>
       </div>

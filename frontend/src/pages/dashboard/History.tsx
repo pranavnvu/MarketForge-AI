@@ -236,11 +236,10 @@ export default function History() {
         <div className="rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
           {/* Header Row */}
           <div className="grid grid-cols-12 gap-4 border-b border-border/50 px-5 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            <span className="col-span-4 flex items-center gap-1.5"><FolderOpen className="h-3.5 w-3.5" />Project</span>
-            <span className="col-span-2 flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />Status</span>
+            <span className="col-span-5 flex items-center gap-1.5"><FolderOpen className="h-3.5 w-3.5" />Project</span>
+            <span className="col-span-3 flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />Status</span>
             <span className="col-span-2 flex items-center gap-1.5"><Timer className="h-3.5 w-3.5" />Duration</span>
             <span className="col-span-2 flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />Agents</span>
-            <span className="col-span-2 flex items-center gap-1.5"><FileCode2 className="h-3.5 w-3.5" />Files</span>
           </div>
 
           {/* Rows */}
@@ -265,7 +264,7 @@ export default function History() {
                   }`}
                 >
                   {/* Project Name & Date */}
-                  <div className="col-span-4 min-w-0">
+                  <div className="col-span-5 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium truncate">{project.name}</p>
                       {deleted && (
@@ -280,7 +279,7 @@ export default function History() {
                   </div>
 
                   {/* Status */}
-                  <div className="col-span-2">
+                  <div className="col-span-3">
                     <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${config.color}`}>
                       <Icon className="h-4 w-4" />
                       {config.label}
@@ -295,7 +294,7 @@ export default function History() {
                   {/* Agents */}
                   <div className="col-span-2">
                     {project.status === 'completed' ? (
-                      <span className="text-sm font-medium text-emerald-500">10 completed</span>
+                      <span className="text-sm font-medium text-emerald-500">3 completed</span>
                     ) : agentStats.active > 0 ? (
                       <span className="text-sm">
                         <span className="font-semibold text-emerald-400">{agentStats.active} active</span>
@@ -306,11 +305,6 @@ export default function History() {
                     ) : (
                       <span className="text-sm text-muted-foreground">0 active</span>
                     )}
-                  </div>
-
-                  {/* Files */}
-                  <div className="col-span-2">
-                    <span className="text-sm">{fileCount > 0 ? `${fileCount} files` : '—'}</span>
                   </div>
                 </motion.div>
               );

@@ -29,6 +29,16 @@ class Settings(BaseSettings):
     
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
+
+    # Local Ollama & Unified Single Model Configuration
+    LLM_PROVIDER: str = "auto"  # "ollama", "gemini", "anthropic", "openai", or "auto"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama3"
+
     
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587

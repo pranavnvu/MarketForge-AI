@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -73,7 +74,7 @@ const initialNotifications: NotificationItem[] = [
 // ---- Sidebar Navigation Items ----
 const sidebarItems = [
   { path: ROUTES.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
-  { path: ROUTES.PROJECTS, label: 'Projects', icon: FolderKanban },
+  { path: ROUTES.PROJECTS, label: 'Campaigns', icon: FolderKanban },
   { path: ROUTES.AGENTS, label: 'Agents', icon: Bot },
   { path: ROUTES.HISTORY, label: 'History', icon: History },
   { path: ROUTES.API_KEYS, label: 'API Keys', icon: Key },
@@ -263,7 +264,13 @@ function TopBar() {
   const { user } = useAuthStore();
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: projects = [] } = useProjects();
+
+  const handleLogout = () => {
+    queryClient.clear(); // Clear all cached projects and data
+    logout();
+  };
 
   const [notifications, setNotifications] = useState<DynamicNotificationItem[]>(initialNotifications);
   const [showNotifPopover, setShowNotifPopover] = useState(false);
@@ -356,176 +363,6 @@ function TopBar() {
           {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </button>
 
-        {/* Notifications Bell & Popover Drawer */}
-        <div className="relative" ref={notifRef}>
-          <button
-            onClick={() => setShowNotifPopover(!showNotifPopover)}
-            className={`relative rounded-lg p-2 transition-colors ${
-              showNotifPopover
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-            title="Notifications"
-          >
-            <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-extrabold text-white shadow-md animate-pulse">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-
-          {/* Notifications Popover Dropdown */}
-          <AnimatePresence>
-            {showNotifPopover && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-border/80 bg-background shadow-[0_20px_60px_rgba(0,0,0,0.85)] z-50 text-foreground ring-1 ring-white/10 p-4"
-              >
-                {/* Popover Header */}
-                <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-sm text-foreground">Notifications</h3>
-                    {unreadCount > 0 && (
-                      <span className="rounded-full bg-primary/20 border border-primary/40 px-2 py-0.5 text-[11px] font-bold text-primary">
-                        {unreadCount} unread
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs">
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={markAllAsRead}
-                        className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors text-[11px] font-semibold"
-                        title="Mark all as read"
-                      >
-                        <CheckCheck className="h-3.5 w-3.5 text-primary" />
-                        Mark read
-                      </button>
-                    )}
-                    {notifications.length > 0 && (
-                      <button
-                        onClick={clearAllNotifications}
-                        className="flex items-center gap-1 text-muted-foreground hover:text-red-400 transition-colors text-[11px] font-semibold ml-2"
-                        title="Clear all"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-red-400" />
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Filter Chips */}
-                <div className="flex items-center gap-2 pt-3 pb-1.5">
-                  <button
-                    onClick={() => setActiveFilter('all')}
-                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                      activeFilter === 'all'
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-accent/60 text-muted-foreground hover:bg-accent hover:text-foreground'
-                    }`}
-                  >
-                    All ({notifications.length})
-                  </button>
-                  <button
-                    onClick={() => setActiveFilter('unread')}
-                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                      activeFilter === 'unread'
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-accent/60 text-muted-foreground hover:bg-accent hover:text-foreground'
-                    }`}
-                  >
-                    Unread ({unreadCount})
-                  </button>
-                </div>
-
-                {/* Notification Items List */}
-                <div className="mt-2 max-h-80 space-y-2.5 overflow-y-auto pr-1">
-                  {filteredNotifications.length > 0 ? (
-                    filteredNotifications.map((notif) => (
-                      <div
-                        key={notif.id}
-                        onClick={() => {
-                          toggleRead(notif.id);
-                          if (notif.link) {
-                            navigate(notif.link);
-                            setShowNotifPopover(false);
-                          }
-                        }}
-                        className={`group relative flex items-start gap-3 rounded-xl p-3 text-xs transition-all cursor-pointer border ${
-                          notif.read
-                            ? 'border-border/50 bg-secondary/40 hover:bg-secondary/70 text-muted-foreground'
-                            : 'border-primary/50 bg-primary/10 hover:bg-primary/20 text-foreground font-semibold shadow-xs'
-                        }`}
-                      >
-                        {/* Type Icon Badge */}
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background/90 border border-border/70 text-base shadow-xs mt-0.5">
-                          {notif.type === 'agent'
-                            ? '🤖'
-                            : notif.type === 'security'
-                            ? '🛡️'
-                            : notif.type === 'build'
-                            ? '🚀'
-                            : '⚡'}
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 pr-4">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="font-bold truncate text-foreground text-xs">
-                              {notif.title}
-                            </span>
-                            <span className="text-[10px] font-medium text-muted-foreground shrink-0">{notif.time}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2 mt-1 leading-relaxed font-normal">
-                            {notif.message}
-                          </p>
-                        </div>
-
-                        {/* Unread Indicator & Delete Button */}
-                        <div className="flex items-center gap-1">
-                          {!notif.read && (
-                            <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
-                          )}
-                          <button
-                            onClick={(e) => removeNotification(notif.id, e)}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-red-400 transition-all rounded-md hover:bg-accent"
-                            title="Remove notification"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-8 text-center text-xs text-muted-foreground space-y-1">
-                      <p className="font-semibold text-foreground">No notifications</p>
-                      <p className="text-[11px]">You're all caught up!</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer */}
-                <div className="mt-3 border-t border-border/50 pt-2 text-center">
-                  <button
-                    onClick={() => {
-                      navigate(ROUTES.HISTORY);
-                      setShowNotifPopover(false);
-                    }}
-                    className="text-[11px] font-semibold text-primary hover:underline"
-                  >
-                    View all history & logs →
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
         {/* User Menu */}
         <div className="ml-2 flex items-center gap-3 border-l border-border/50 pl-4">
           <div className="hidden sm:block text-right">
@@ -549,7 +386,7 @@ function TopBar() {
             )}
           </div>
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
             title="Logout"
           >

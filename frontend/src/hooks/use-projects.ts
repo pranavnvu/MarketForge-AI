@@ -121,3 +121,71 @@ export function useUpdateProject() {
     },
   });
 }
+
+export function useRunOrchestration() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (projectId: string) => {
+      const response = await apiClient.post<any>(`/projects/${projectId}/run`);
+      return transformProject(response.data);
+    },
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(updated.id) });
+    },
+  });
+}
+
+export function useRunAgentNode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ projectId, agentKey }: { projectId: string; agentKey: string }) => {
+      const response = await apiClient.post<any>(`/projects/${projectId}/agents/run`, {
+        agent_key: agentKey,
+      });
+      return transformProject(response.data);
+    },
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(updated.id) });
+    },
+  });
+}
+
+export function useSendAgentChat() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      agentKey,
+      message,
+    }: {
+      projectId: string;
+      agentKey?: string;
+      message: string;
+    }) => {
+      const response = await apiClient.post<any>(`/projects/${projectId}/chat`, {
+        agent_key: agentKey || 'all',
+        message,
+      });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) });
+    },
+  });
+}
+
+export function useGetProjectConsistency(projectId: string) {
+  return useQuery({
+    queryKey: [...projectKeys.detail(projectId), 'consistency'],
+    queryFn: async () => {
+      const response = await apiClient.get<any>(`/projects/${projectId}/consistency`);
+      return response.data;
+    },
+    enabled: !!projectId,
+  });
+}
+

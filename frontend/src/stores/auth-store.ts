@@ -31,8 +31,8 @@ export const useAuthStore = create<AuthState>()(
 
       setAuth: (user, accessToken, refreshToken) => {
         // Also store tokens separately for API interceptor
-        localStorage.setItem('devforge_access_token', accessToken);
-        localStorage.setItem('devforge_refresh_token', refreshToken);
+        sessionStorage.setItem('devforge_access_token', accessToken);
+        sessionStorage.setItem('devforge_refresh_token', refreshToken);
 
         set({
           user,
@@ -68,8 +68,10 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: loading }),
 
       logout: () => {
-        localStorage.removeItem('devforge_access_token');
-        localStorage.removeItem('devforge_refresh_token');
+        // To maintain strict privacy, clear all session storage keys completely
+        // so no projects, tokens, or ledger data leaks to the next user
+        sessionStorage.clear();
+        localStorage.clear(); // Also clear old local storage data just in case
 
         set({
           user: null,
@@ -82,7 +84,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'devforge_auth',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,

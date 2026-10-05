@@ -74,16 +74,9 @@ export interface Project {
 
 // ---- Agent ----
 export type AgentType =
-  | 'product_manager'
   | 'architect'
-  | 'planner'
-  | 'backend_dev'
-  | 'frontend_dev'
-  | 'qa_engineer'
-  | 'security_analyst'
-  | 'code_reviewer'
-  | 'documentation'
-  | 'devops';
+  | 'developer'
+  | 'reviewer';
 
 export type AgentStatus = 'idle' | 'running' | 'completed' | 'failed' | 'waiting';
 
@@ -242,3 +235,13 @@ export interface ActivityItem {
   timestamp: string;
   projectId?: string;
 }
+
+export interface FileConsistencyMetrics {
+  project_id: string;
+  api_contract_matched: boolean;
+  orm_schemas_aligned: boolean;
+  auth_tokens_verified: boolean;
+  total_files: number;
+  files_synced: boolean;
+}
+

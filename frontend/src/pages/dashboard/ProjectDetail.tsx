@@ -2,12 +2,12 @@
 // DevForge AI — Project Detail Page
 // ============================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, RefreshCw, Download, GitBranch, Power, PowerOff } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Download, GitBranch, Power, PowerOff, Play, CheckCircle2, Loader2 } from 'lucide-react';
 import { ROUTES, AGENT_CONFIG } from '@/lib/constants';
-import { useProject, useUpdateProject } from '@/hooks/use-projects';
+import { useProject, useUpdateProject, useRunOrchestration } from '@/hooks/use-projects';
 import {
   getProjectAgentStatuses,
   getDisabledAgentsForProject,
@@ -17,16 +17,32 @@ import type { AgentType } from '@/types';
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
-  const { data: project, isLoading } = useProject(id || '');
+  const { data: project, isLoading, refetch } = useProject(id || '');
   const updateProject = useUpdateProject();
+  const runOrchestration = useRunOrchestration();
 
   const [disabledAgents, setDisabledAgents] = useState<AgentType[]>([]);
+  const [isPipelineRunning, setIsPipelineRunning] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
   useEffect(() => {
     if (project) {
       setDisabledAgents(getDisabledAgentsForProject(project));
     }
   }, [project]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
   const projectName = project?.name || 'Project Overview';
   const projectTech = project?.config?.techStack || 'fullstack';
@@ -43,7 +59,6 @@ export default function ProjectDetail() {
     const newDisabled = toggleAgentForProject(project, key, isDisabled);
     setDisabledAgents(newDisabled);
 
-    // Persist to backend database as well
     updateProject.mutate({
       id: project.id,
       data: {
@@ -55,8 +70,45 @@ export default function ProjectDetail() {
     });
   };
 
+  const handleRunPipeline = async () => {
+    if (!project || isPipelineRunning) return;
+
+    setIsPipelineRunning(true);
+    showToast('🚀 Starting 10-agent pipeline...');
+
+    // Start polling for progress updates every 2 seconds
+    pollingRef.current = setInterval(() => {
+      refetch();
+    }, 2000);
+
+    try {
+      await runOrchestration.mutateAsync(project.id);
+
+      // Pipeline complete
+      if (pollingRef.current) clearInterval(pollingRef.current);
+      await refetch();
+      setIsPipelineRunning(false);
+      showToast('🎉 All 10 agents completed! Project build finished successfully.');
+    } catch (err: any) {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+      setIsPipelineRunning(false);
+      const errorMsg = err?.response?.data?.detail || 'Pipeline execution failed';
+      showToast(`❌ Error: ${errorMsg}`);
+    }
+  };
+
+  const isCompleted = project?.status === 'completed' || overallProgress >= 100;
+
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 rounded-2xl bg-emerald-500 border border-emerald-400 px-4 py-3 text-xs font-semibold text-white shadow-2xl animate-in fade-in slide-in-from-top-4">
+          <CheckCircle2 className="h-4 w-4" />
+          {toastMessage}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-wrap items-center gap-4">
         <Link
@@ -72,6 +124,35 @@ export default function ProjectDetail() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Run Pipeline Button */}
+          {!isCompleted && (
+            <button
+              onClick={handleRunPipeline}
+              disabled={isPipelineRunning}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+                isPipelineRunning
+                  ? 'bg-amber-500/20 border border-amber-500/30 text-amber-400 cursor-wait'
+                  : 'bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40'
+              }`}
+            >
+              {isPipelineRunning ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Running Pipeline...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" /> Run Agent Pipeline
+                </>
+              )}
+            </button>
+          )}
+
+          {isCompleted && (
+            <span className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 px-4 py-2 text-sm font-semibold text-emerald-400">
+              <CheckCircle2 className="h-4 w-4" /> Build Complete
+            </span>
+          )}
+
           <Link
             to={`${ROUTES.PROJECTS}/${id}/workspace`}
             className="inline-flex items-center gap-2 rounded-xl bg-purple-500/10 border border-purple-500/30 px-3.5 py-2 text-sm font-semibold text-purple-400 hover:bg-purple-500/20 transition-colors"
@@ -103,7 +184,12 @@ export default function ProjectDetail() {
               <div>
                 <h2 className="text-lg font-semibold">Overall Build Progress</h2>
                 <p className="text-xs text-muted-foreground">
-                  Status: <span className="font-semibold text-foreground capitalize">{project?.status || 'Planning'}</span>
+                  Status: <span className={`font-semibold capitalize ${isCompleted ? 'text-emerald-400' : 'text-foreground'}`}>{project?.status || 'Planning'}</span>
+                  {isPipelineRunning && (
+                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-400">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Pipeline Running
+                    </span>
+                  )}
                   {disabledAgents.length > 0 && (
                     <span className="ml-2 rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-400">
                       {disabledAgents.length} Agent{disabledAgents.length > 1 ? 's' : ''} Disabled
@@ -111,14 +197,14 @@ export default function ProjectDetail() {
                   )}
                 </p>
               </div>
-              <span className="text-2xl font-bold text-primary">{overallProgress}%</span>
+              <span className={`text-2xl font-bold ${isCompleted ? 'text-emerald-400' : 'text-primary'}`}>{overallProgress}%</span>
             </div>
             <div className="h-3 rounded-full bg-accent overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${overallProgress}%` }}
                 transition={{ duration: 1, ease: 'easeOut' }}
-                className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-500"
+                className={`h-full rounded-full ${isCompleted ? 'bg-emerald-500' : 'bg-gradient-to-r from-purple-500 to-cyan-500'}`}
               />
             </div>
           </div>
@@ -139,7 +225,7 @@ export default function ProjectDetail() {
                 ([key, agent], index) => {
                   const agentStatus = agentStatuses[key] || { status: 'waiting', progress: 0, message: 'Waiting' };
                   const isDisabled = agentStatus.status === 'disabled';
-                  const isCompleted = agentStatus.status === 'completed';
+                  const isAgentCompleted = agentStatus.status === 'completed';
                   const isRunning = agentStatus.status === 'running';
 
                   return (
@@ -153,7 +239,7 @@ export default function ProjectDetail() {
                           ? 'border-border/30 bg-card/20 opacity-50'
                           : isRunning
                             ? 'border-primary/40 bg-primary/5'
-                            : isCompleted
+                            : isAgentCompleted
                               ? 'border-emerald-500/30 bg-emerald-500/5'
                               : 'border-border/30'
                       }`}
@@ -172,7 +258,7 @@ export default function ProjectDetail() {
                               🚫 Disabled for Project
                             </span>
                           )}
-                          {isCompleted && (
+                          {isAgentCompleted && (
                             <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full">
                               ✓ Completed
                             </span>
@@ -198,7 +284,7 @@ export default function ProjectDetail() {
                           <div className="mt-2 h-1.5 w-full max-w-xs rounded-full bg-accent overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
-                                isCompleted
+                                isAgentCompleted
                                   ? 'bg-emerald-500'
                                   : 'bg-gradient-to-r from-purple-500 to-cyan-500'
                               }`}
@@ -218,8 +304,9 @@ export default function ProjectDetail() {
                       {/* Enable/Disable Toggle Button */}
                       <button
                         onClick={() => handleToggleAgent(key)}
+                        disabled={isPipelineRunning}
                         title={isDisabled ? `Enable ${agent.name} for this project` : `Disable ${agent.name} for this project`}
-                        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
+                        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                           isDisabled
                             ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
                             : 'border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20'

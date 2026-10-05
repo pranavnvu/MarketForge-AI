@@ -31,6 +31,12 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     
     oauth_provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     oauth_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    
+    bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    website: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    github: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    job_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Relationships
     refresh_tokens: Mapped[List["RefreshToken"]] = relationship(

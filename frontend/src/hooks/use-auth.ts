@@ -20,6 +20,26 @@ export const authKeys = {
   me: () => [...authKeys.all, 'me'] as const,
 };
 
+// Transform snake_case backend user to camelCase frontend User
+function transformUser(raw: any): User {
+  return {
+    id: raw.id,
+    name: raw.name,
+    email: raw.email,
+    avatar: raw.avatar ?? null,
+    role: raw.role ?? 'user',
+    isVerified: raw.is_verified ?? raw.isVerified ?? false,
+    oauthProvider: raw.oauth_provider ?? raw.oauthProvider ?? null,
+    bio: raw.bio ?? undefined,
+    location: raw.location ?? undefined,
+    website: raw.website ?? undefined,
+    github: raw.github ?? undefined,
+    jobTitle: raw.job_title ?? raw.jobTitle ?? undefined,
+    createdAt: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+    updatedAt: raw.updated_at ?? raw.updatedAt ?? new Date().toISOString(),
+  };
+}
+
 // ---- Login ----
 export function useLogin() {
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -31,7 +51,8 @@ export function useLogin() {
       return response.data;
     },
     onSuccess: (data) => {
-      setAuth(data.user, data.accessToken, data.refreshToken);
+      const user = transformUser(data.user);
+      setAuth(user, data.accessToken, data.refreshToken);
       navigate(ROUTES.DASHBOARD);
     },
   });
@@ -48,7 +69,8 @@ export function useRegister() {
       return response.data;
     },
     onSuccess: (data) => {
-      setAuth(data.user, data.accessToken, data.refreshToken);
+      const user = transformUser(data.user);
+      setAuth(user, data.accessToken, data.refreshToken);
       navigate(ROUTES.DASHBOARD);
     },
   });
@@ -83,8 +105,9 @@ export function useCurrentUser() {
   return useQuery({
     queryKey: authKeys.me(),
     queryFn: async () => {
-      const response = await apiClient.get<{ data: User }>('/auth/me');
-      return response.data.data;
+      const response = await apiClient.get<any>('/auth/me');
+      const raw = response.data.data ?? response.data;
+      return transformUser(raw);
     },
     enabled: isAuthenticated,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -155,11 +178,18 @@ export function useUpdateProfile() {
       try {
         const response = await apiClient.put('/auth/me', {
           name: data.name,
+          email: data.email,
           avatar: data.avatar,
+          bio: data.bio,
+          location: data.location,
+          website: data.website,
+          github: data.github,
+          job_title: data.jobTitle,
         });
         if (response.data) {
-          updateUser(response.data);
-          return response.data;
+          const transformed = transformUser(response.data);
+          updateUser(transformed);
+          return transformed;
         }
         return data;
       } catch {
@@ -167,7 +197,7 @@ export function useUpdateProfile() {
       }
     },
     onSuccess: (updated) => {
-      if (updated) updateUser(updated);
+      if (updated) updateUser(updated as Partial<User>);
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
     },
   });

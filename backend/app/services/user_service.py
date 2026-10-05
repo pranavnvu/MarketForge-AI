@@ -58,8 +58,20 @@ class UserService:
     async def update_user(self, user: User, user_in: UserUpdate) -> User:
         if user_in.name is not None:
             user.name = user_in.name
+        if user_in.email is not None:
+            user.email = user_in.email
         if user_in.avatar is not None:
             user.avatar = user_in.avatar
+        if user_in.bio is not None:
+            user.bio = user_in.bio
+        if user_in.location is not None:
+            user.location = user_in.location
+        if user_in.website is not None:
+            user.website = user_in.website
+        if user_in.github is not None:
+            user.github = user_in.github
+        if user_in.job_title is not None:
+            user.job_title = user_in.job_title
         await self.db.commit()
         await self.db.refresh(user)
         return user

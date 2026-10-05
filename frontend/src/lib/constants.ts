@@ -1,9 +1,9 @@
 // ============================================
-// DevForge AI — App Constants
+// MarketForge AI — App Constants
 // ============================================
 
-export const APP_NAME = 'DevForge AI';
-export const APP_DESCRIPTION = 'Autonomous Multi-Agent Software Engineering Platform';
+export const APP_NAME = 'MarketForge AI';
+export const APP_DESCRIPTION = 'Autonomous Multi-Agent Marketing Agency Platform';
 export const APP_VERSION = '1.0.0';
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -38,67 +38,29 @@ export const ROUTES = {
 
 // ---- Agent Configuration ----
 export const AGENT_CONFIG = {
-  product_manager: {
-    name: 'Product Manager',
-    icon: '📋',
-    color: '#8B5CF6',
-    description: 'Gathers requirements, writes user stories, defines acceptance criteria',
+  strategist: {
+    name: 'The Strategist',
+    icon: '🧠',
+    color: '#3B82F6',
+    endpoint: 'POST /agents/strategist',
+    description: 'Plans the 30-day content calendar, defines target demographics, and establishes the brand voice.',
   },
-  architect: {
-    name: 'Architect',
-    icon: '🏗️',
-    color: '#06B6D4',
-    description: 'Designs system architecture, APIs, database schema, tech stack selection',
-  },
-  planner: {
-    name: 'Planner',
-    icon: '📊',
-    color: '#F59E0B',
-    description: 'Breaks project into tasks, creates dependency graph, sprint planning',
-  },
-  backend_dev: {
-    name: 'Backend Developer',
-    icon: '⚙️',
+  copywriter: {
+    name: 'The Copywriter',
+    icon: '✍️',
     color: '#10B981',
-    description: 'Builds APIs, database models, authentication, business logic',
+    endpoint: 'POST /agents/copywriter',
+    description: 'Writes the actual blog posts, tweet threads, email newsletters, and ad copy based on the strategy.',
   },
-  frontend_dev: {
-    name: 'Frontend Developer',
-    icon: '🎨',
-    color: '#EC4899',
-    description: 'Creates UI components, pages, responsive layouts, styling',
-  },
-  qa_engineer: {
-    name: 'QA Engineer',
-    icon: '🧪',
-    color: '#EF4444',
-    description: 'Writes test cases, unit tests, integration tests, generates bug reports',
-  },
-  security_analyst: {
-    name: 'Security Analyst',
-    icon: '🔒',
-    color: '#F97316',
-    description: 'Vulnerability scanning, secret detection, OWASP compliance checks',
-  },
-  code_reviewer: {
-    name: 'Code Reviewer',
-    icon: '👁️',
-    color: '#6366F1',
-    description: 'Reviews code quality, suggests refactoring, enforces best practices',
-  },
-  documentation: {
-    name: 'Documentation Writer',
-    icon: '📝',
-    color: '#14B8A6',
-    description: 'Generates README, API documentation, user guides',
-  },
-  devops: {
-    name: 'DevOps Engineer',
-    icon: '🚀',
-    color: '#A855F7',
-    description: 'Creates Docker setup, CI/CD pipelines, deployment configurations',
+  seo_reviewer: {
+    name: 'SEO & Brand Reviewer',
+    icon: '🕵️',
+    color: '#8B5CF6',
+    endpoint: 'POST /agents/seo_reviewer',
+    description: 'Audits the copy for SEO keywords, readability, brand safety, and consistency before outputting final assets.',
   },
 } as const;
+
 
 // ---- Project Status Config ----
 export const PROJECT_STATUS_CONFIG = {
@@ -117,13 +79,13 @@ export const PRICING_PLANS = [
     name: 'Starter',
     price: 0,
     period: 'forever',
-    description: 'Perfect for trying out DevForge AI',
+    description: 'Perfect for trying out MarketForge AI',
     features: [
-      '3 projects per month',
+      '3 campaigns per month',
       'Basic AI agents',
       'Community support',
-      '1 workspace',
-      'Code export',
+      'Export campaigns',
+      '50,000 words limit',
     ],
     cta: 'Get Started Free',
     popular: false,
@@ -132,18 +94,17 @@ export const PRICING_PLANS = [
     name: 'Pro',
     price: 29,
     period: 'month',
-    description: 'For professional developers and small teams',
+    description: 'For professional marketers and small teams',
     features: [
-      'Unlimited projects',
-      'All 10 AI agents',
+      'Unlimited campaigns',
+      'All 3 AI agents',
       'Priority support',
-      '5 workspaces',
-      'GitHub integration',
-      'Custom templates',
+      'Unlimited words',
+      'Brand voice templates',
       'Advanced analytics',
       'Team collaboration',
     ],
-    cta: 'Start Pro Trial',
+    cta: 'Upgrade to Pro',
     popular: true,
   },
   {
@@ -153,7 +114,6 @@ export const PRICING_PLANS = [
     description: 'For organizations that need advanced features',
     features: [
       'Everything in Pro',
-      'Unlimited workspaces',
       'Custom AI models',
       'SSO / SAML',
       'Audit logs',
@@ -170,7 +130,7 @@ export const PRICING_PLANS = [
 // ---- Keyboard Shortcuts ----
 export const KEYBOARD_SHORTCUTS = {
   SEARCH: { key: 'k', modifier: 'meta', label: '⌘K — Search' },
-  NEW_PROJECT: { key: 'n', modifier: 'meta', label: '⌘N — New Project' },
+  NEW_PROJECT: { key: 'n', modifier: 'meta', label: '⌘N — New Campaign' },
   SETTINGS: { key: ',', modifier: 'meta', label: '⌘, — Settings' },
   TOGGLE_SIDEBAR: { key: 'b', modifier: 'meta', label: '⌘B — Toggle Sidebar' },
   TOGGLE_THEME: { key: 'd', modifier: 'meta+shift', label: '⌘⇧D — Toggle Theme' },

@@ -19,6 +19,7 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
+    email: Optional[EmailStr] = None
     avatar: Optional[str] = None
     job_title: Optional[str] = None
     bio: Optional[str] = None
@@ -34,6 +35,11 @@ class UserResponse(UserBase):
     is_active: bool
     is_verified: bool
     oauth_provider: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    website: Optional[str] = None
+    github: Optional[str] = None
+    job_title: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

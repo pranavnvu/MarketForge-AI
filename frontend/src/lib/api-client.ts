@@ -17,7 +17,7 @@ const apiClient = axios.create({
 // ---- Request Interceptor ----
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('devforge_access_token');
+    const token = sessionStorage.getItem('devforge_access_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -72,7 +72,7 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('devforge_refresh_token');
+        const refreshToken = sessionStorage.getItem('devforge_refresh_token');
         if (!refreshToken) {
           throw new Error('No refresh token');
         }
@@ -82,7 +82,7 @@ apiClient.interceptors.response.use(
         });
 
         const accessToken = data.access_token || data.accessToken;
-        localStorage.setItem('devforge_access_token', accessToken);
+        sessionStorage.setItem('devforge_access_token', accessToken);
 
         processQueue(null, accessToken);
 
@@ -105,3 +105,28 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+
+export const apiKeysClient = {
+  list: async () => {
+    const { data } = await apiClient.get('/api-keys');
+    return data;
+  },
+  create: async (name: string) => {
+    const { data } = await apiClient.post('/api-keys', { name });
+    return data;
+  },
+  delete: async (id: string) => {
+    await apiClient.delete(`/api-keys/${id}`);
+  }
+};
+
+export const billingClient = {
+  createCheckoutSession: async () => {
+    const { data } = await apiClient.post('/billing/create-checkout-session');
+    return data;
+  },
+  verifySession: async (sessionId: string) => {
+    const { data } = await apiClient.post(`/billing/verify-session?session_id=${sessionId}`);
+    return data;
+  }
+};
